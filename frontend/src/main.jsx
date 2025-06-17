@@ -1,7 +1,10 @@
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom/client';
+
 function App() {
-    const [apiKey, setApiKey] = React.useState('');
-    const [prompt, setPrompt] = React.useState('Identify shopify abandoned basket spam emails. Return yes or no.');
-    const [emails, setEmails] = React.useState([]);
+    const [apiKey, setApiKey] = useState('');
+    const [prompt, setPrompt] = useState('Identify shopify abandoned basket spam emails. Return yes or no.');
+    const [emails, setEmails] = useState([]);
 
     const linkGmail = () => {
         window.location.href = '/auth';
@@ -59,4 +62,5 @@ function App() {
     );
 }
 
-ReactDOM.render(<App />, document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);

@@ -1,7 +1,5 @@
 from flask import Flask, request, jsonify, redirect, url_for
 import os
-import json
-import datetime
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -9,17 +7,28 @@ import requests
 
 app = Flask(__name__)
 
-# Paths for token and credentials
+# Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), 'token.json')
-CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
 OPENROUTER_KEY_FILE = os.path.join(os.path.dirname(__file__), 'openrouter.key')
+
+# Google OAuth client credentials
+CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+CLIENT_CONFIG = {
+    'web': {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
+        'token_uri': 'https://oauth2.googleapis.com/token',
+    }
+}
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 @app.route('/auth')
 def auth():
-    flow = Flow.from_client_secrets_file(
-        CREDENTIALS_FILE,
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
@@ -28,8 +37,8 @@ def auth():
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    flow = Flow.from_client_secrets_file(
-        CREDENTIALS_FILE,
+    flow = Flow.from_client_config(
+        CLIENT_CONFIG,
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )

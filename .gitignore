@@ -196,3 +196,6 @@ cython_debug/
 backend/token.json
 backend/openrouter.key
 backend/credentials.json
+frontend/node_modules/
+frontend/dist/
+frontend/package-lock.json
