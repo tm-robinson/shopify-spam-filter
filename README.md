@@ -4,12 +4,19 @@ This project contains a simple Flask backend and React frontend to scan your Gma
 
 ## Setup
 
-1. Set the Google OAuth client credentials as environment variables before running the backend:
-   ```bash
-   export GOOGLE_CLIENT_ID=your_client_id
-   export GOOGLE_CLIENT_SECRET=your_client_secret
-   ```
-   The app will redirect you to sign in with Google and grant Gmail access.
+1. Obtain Google OAuth credentials and set them as environment variables:
+   1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+   2. Create a project and enable the **Gmail API**.
+   3. Configure the OAuth consent screen (External user type is sufficient).
+   4. Create **OAuth client ID** credentials of type **Web application** and add
+      `http://localhost:5000/oauth2callback` as an authorised redirect URI.
+   5. Copy the generated *Client ID* and *Client Secret* and export them before
+      running the backend:
+      ```bash
+      export GOOGLE_CLIENT_ID=<client-id>
+      export GOOGLE_CLIENT_SECRET=<client-secret>
+      ```
+   When you start the app it will redirect you to Google to grant Gmail access.
 2. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
