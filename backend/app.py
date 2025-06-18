@@ -30,26 +30,29 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 @app.route('/auth')
 def auth():
+    frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
+
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=(f"{frontend}/oauth2callback"),
     )
     auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true')
     return redirect(auth_url)
 
 @app.route('/oauth2callback')
 def oauth2callback():
+    frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
+
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True),
+        redirect_uri=(f"{frontend}/oauth2callback"),
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
     with open(TOKEN_FILE, 'w') as f:
         f.write(creds.to_json())
-    frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
     return redirect(frontend)
 
 @app.route('/openrouter-key', methods=['POST'])
