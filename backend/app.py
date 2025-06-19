@@ -33,7 +33,7 @@ def auth():
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri='https://5173-firebase-shopify-spam-filter-1750051715977.cluster-6frnii43o5blcu522sivebzpii.cloudworkstations.dev/oauth2callback', #url_for('oauth2callback', _external=True)
+        redirect_uri=url_for('oauth2callback', _external=True)
     )
     auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true')
     return redirect(auth_url)
@@ -43,7 +43,7 @@ def oauth2callback():
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=url_for('oauth2callback', _external=True),
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
@@ -162,4 +162,4 @@ def confirm():
     return ('', 204)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, ssl_context='adhoc')
