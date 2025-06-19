@@ -5,6 +5,9 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 import requests
 
+from dotenv import load_dotenv
+load_dotenv()  # take environment variables
+
 app = Flask(__name__)
 
 # Paths for token and OpenRouter key
@@ -40,7 +43,7 @@ def oauth2callback():
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=url_for('oauth2callback', _external=True),
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
@@ -160,4 +163,4 @@ def confirm():
     return ('', 204)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, ssl_context='adhoc')
