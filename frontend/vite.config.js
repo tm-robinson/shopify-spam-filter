@@ -1,13 +1,16 @@
+
+const backend = 'http://localhost:5000';
+
 export default {
   root: '.',
   server: {
     proxy: {
-      '/auth': 'http://localhost:5000',
-      '/oauth2callback': 'http://localhost:5000',
-      '/openrouter-key': 'http://localhost:5000',
-      '/scan-emails': 'http://localhost:5000',
-      '/toggle-label': 'http://localhost:5000',
-      '/confirm': 'http://localhost:5000',
+      '/auth': { target: backend, changeOrigin: true },
+      '/oauth2callback': { target: backend, changeOrigin: true },
+      '/openrouter-key': { target: backend, changeOrigin: true },
+      '/scan-emails': { target: backend, changeOrigin: true },
+      '/toggle-label': { target: backend, changeOrigin: true },
+      '/confirm': { target: backend, changeOrigin: true },
     },
   },
 };

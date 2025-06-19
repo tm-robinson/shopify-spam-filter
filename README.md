@@ -17,6 +17,7 @@ This project contains a simple Flask backend and React frontend to scan your Gma
       export GOOGLE_CLIENT_SECRET=<client-secret>
       ```
    6. Add your gmail account to the list of "test users" within the OAuth Client settings in the Audience tab.
+
    When you start the app it will redirect you to Google to grant Gmail access.
 2. Install Python dependencies:
    ```bash
@@ -32,6 +33,7 @@ This project contains a simple Flask backend and React frontend to scan your Gma
    ```bash
    python backend/app.py
    ```
+   Set `FRONTEND_URL` if your React dev server runs on a different URL (default `http://localhost:5173/`).
 5. Open the URL shown by the dev server in your browser. Link your Gmail account, enter your OpenRouter API key and scan emails.
 
 To create a production build of the frontend, run `npm run build` inside `frontend/` and serve the generated `dist` directory.

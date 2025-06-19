@@ -49,7 +49,8 @@ def oauth2callback():
     creds = flow.credentials
     with open(TOKEN_FILE, 'w') as f:
         f.write(creds.to_json())
-    return redirect('/')
+    frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
+    return redirect(frontend)
 
 @app.route('/openrouter-key', methods=['POST'])
 def save_openrouter_key():
