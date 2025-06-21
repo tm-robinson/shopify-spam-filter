@@ -28,10 +28,14 @@ CLIENT_CONFIG = {
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
+@app.route('/')
+def root():
+    return "hi"
+
 @app.route('/auth')
 def auth():
     frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
-
+    print(f"frontend is {frontend}")
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
@@ -43,7 +47,7 @@ def auth():
 @app.route('/oauth2callback')
 def oauth2callback():
     frontend = os.environ.get('FRONTEND_URL', 'http://localhost:5173/')
-
+    print(f"frontend is {frontend}")
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
