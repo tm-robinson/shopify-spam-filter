@@ -7,6 +7,7 @@ from googleapiclient.discovery import build
 import requests
 import threading
 import uuid
+from markdownify import markdownify
 
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables
@@ -124,8 +125,14 @@ def scan_emails():
                 whitelist.add(sender)
 
             tasks[task_id]['stage'] = 'fetching'
-            query = f'label:inbox newer_than:{days}d'
-            logger.debug('Gmail request: list messages "%s"', query)
+            mime_type = payload.get('mimeType')
+                    if part.get('mimeType') in ('text/plain', 'text/html'):
+                        mime_type = part.get('mimeType')
+                if mime_type == 'text/html':
+                    body = markdownify(body)
+            words = body.split()
+            body_preview = ' '.join(words[:500])
+            text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
             results = service.users().messages().list(userId='me', q=query).execute()
             logger.debug('Gmail response: %s', results)
             messages = results.get('messages', [])

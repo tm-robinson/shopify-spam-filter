@@ -33,9 +33,9 @@ function App() {
         .then(r => r.json())
         .then(d => {
           setTask(d);
+          setEmails(d.emails);
+          setChatLog(d.log);
           if (d.stage === 'done') {
-            setEmails(d.emails);
-            setChatLog(d.log);
             clearInterval(interval);
           }
         });
