@@ -136,10 +136,10 @@ def scan_emails():
 
             tasks[task_id]['stage'] = 'fetching'
             mime_type = payload.get('mimeType')
-                    if part.get('mimeType') in ('text/plain', 'text/html'):
-                        mime_type = part.get('mimeType')
-                if mime_type == 'text/html':
-                    body = markdownify(body)
+            if part.get('mimeType') in ('text/plain', 'text/html'):
+                mime_type = part.get('mimeType')
+            if mime_type == 'text/html':
+                body = markdownify(body)
             words = body.split()
             body_preview = ' '.join(words[:500])
             text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
