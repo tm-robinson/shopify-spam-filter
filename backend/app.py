@@ -14,7 +14,7 @@ load_dotenv()  # take environment variables
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), 'token.json')
@@ -106,99 +106,105 @@ def scan_emails():
     logger.info('Starting scan task %s for last %s days', task_id, days)
 
     def worker():
-        service = build('gmail', 'v1', credentials=creds)
-        spam_label = get_label_id(service, 'shopify-spam')
-        whitelist_label = get_label_id(service, 'whitelist')
-        # gather whitelisted senders
-        logger.debug('Gmail request: list whitelist emails')
-        result = service.users().messages().list(userId='me', q='label:whitelist').execute()
-        logger.debug('Gmail response: %s', result)
-        wmsgs = result.get('messages', [])
-        whitelist = set()
-        for m in wmsgs:
-            logger.debug('Gmail request: get message %s for whitelist', m['id'])
-            md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
-            logger.debug('Gmail response: %s', md)
-            sender = next((h['value'] for h in md['payload']['headers'] if h['name'].lower() == 'from'), '')
-            whitelist.add(sender)
+        try:
+            service = build('gmail', 'v1', credentials=creds)
+            spam_label = get_label_id(service, 'shopify-spam')
+            whitelist_label = get_label_id(service, 'whitelist')
+            # gather whitelisted senders
+            logger.debug('Gmail request: list whitelist emails')
+            result = service.users().messages().list(userId='me', q='label:whitelist').execute()
+            logger.debug('Gmail response: %s', result)
+            wmsgs = result.get('messages', [])
+            whitelist = set()
+            for m in wmsgs:
+                logger.debug('Gmail request: get message %s for whitelist', m['id'])
+                md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
+                logger.debug('Gmail response: %s', md)
+                sender = next((h['value'] for h in md['payload']['headers'] if h['name'].lower() == 'from'), '')
+                whitelist.add(sender)
 
-        tasks[task_id]['stage'] = 'fetching'
-        query = f'label:inbox newer_than:{days}d'
-        logger.debug('Gmail request: list messages "%s"', query)
-        results = service.users().messages().list(userId='me', q=query).execute()
-        logger.debug('Gmail response: %s', results)
-        messages = results.get('messages', [])
-        tasks[task_id]['total'] = len(messages)
-        openrouter_key = ''
-        if os.path.exists(OPENROUTER_KEY_FILE):
-            with open(OPENROUTER_KEY_FILE) as f:
-                openrouter_key = f.read().strip()
+            tasks[task_id]['stage'] = 'fetching'
+            query = f'label:inbox newer_than:{days}d'
+            logger.debug('Gmail request: list messages "%s"', query)
+            results = service.users().messages().list(userId='me', q=query).execute()
+            logger.debug('Gmail response: %s', results)
+            messages = results.get('messages', [])
+            tasks[task_id]['total'] = len(messages)
+            openrouter_key = ''
+            if os.path.exists(OPENROUTER_KEY_FILE):
+                with open(OPENROUTER_KEY_FILE) as f:
+                    openrouter_key = f.read().strip()
 
-        for idx, msg in enumerate(messages):
-            tasks[task_id]['stage'] = 'processing'
-            tasks[task_id]['progress'] = idx
-            logger.debug('Gmail request: get message %s', msg['id'])
-            msg_detail = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
-            logger.debug('Gmail response: %s', msg_detail)
-            payload = msg_detail.get('payload', {})
-            headers = payload.get('headers', [])
-            subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
-            sender = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
-            date = next((h['value'] for h in headers if h['name'].lower() == 'date'), '')
-            label_ids = msg_detail.get('labelIds', [])
+            for idx, msg in enumerate(messages):
+                tasks[task_id]['stage'] = 'processing'
+                tasks[task_id]['progress'] = idx
+                logger.debug('Gmail request: get message %s', msg['id'])
+                msg_detail = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+                logger.debug('Gmail response: %s', msg_detail)
+                payload = msg_detail.get('payload', {})
+                headers = payload.get('headers', [])
+                subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
+                sender = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+                date = next((h['value'] for h in headers if h['name'].lower() == 'date'), '')
+                label_ids = msg_detail.get('labelIds', [])
 
-            parts = payload.get('parts', [])
-            body = ''
-            if 'body' in payload and 'data' in payload['body']:
-                body = payload['body']['data']
-            elif parts:
-                for part in parts:
-                    if part.get('mimeType') == 'text/plain':
-                        body = part['body'].get('data', '')
-                        break
-            if body:
-                import base64
-                body = base64.urlsafe_b64decode(body).decode('utf-8', errors='ignore')
-            text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body}"
+                parts = payload.get('parts', [])
+                body = ''
+                if 'body' in payload and 'data' in payload['body']:
+                    body = payload['body']['data']
+                elif parts:
+                    for part in parts:
+                        if part.get('mimeType') == 'text/plain':
+                            body = part['body'].get('data', '')
+                            break
+                if body:
+                    import base64
+                    body = base64.urlsafe_b64decode(body).decode('utf-8', errors='ignore')
+                text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body}"
 
-            status = 'not_spam'
-            if whitelist_label in label_ids or sender in whitelist:
-                status = 'whitelist'
-            else:
-                if openrouter_key:
-                    data = {
-                        'model': 'deepseek-chat',
-                        'messages': [
-                            {'role': 'system', 'content': prompt},
-                            {'role': 'user', 'content': text_md}
-                        ]
-                    }
-                    headers_req = {'Authorization': f'Bearer {openrouter_key}'}
-                    try:
-                        logger.debug('OpenRouter request: %s', data)
-                        resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=data, headers=headers_req)
-                        logger.debug('OpenRouter response %s: %s', resp.status_code, resp.text)
-                        if resp.status_code == 200:
-                            answer = resp.json()['choices'][0]['message']['content']
-                            tasks[task_id]['log'].append({'role': 'system', 'content': prompt})
-                            tasks[task_id]['log'].append({'role': 'user', 'content': text_md})
-                            tasks[task_id]['log'].append({'role': 'assistant', 'content': answer})
-                            if 'yes' in answer.lower():
-                                status = 'spam'
-                    except Exception:
-                        pass
+                status = 'not_spam'
+                if whitelist_label in label_ids or sender in whitelist:
+                    status = 'whitelist'
+                else:
+                    if openrouter_key:
+                        data = {
+                            'model': 'deepseek/deepseek-chat-v3-0324:free',
+                            'messages': [
+                                {'role': 'system', 'content': prompt},
+                                {'role': 'user', 'content': text_md}
+                            ]
+                        }
+                        headers_req = {'Authorization': f'Bearer {openrouter_key}'}
+                        try:
+                            logger.debug('OpenRouter request: %s', data)
+                            resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=data, headers=headers_req)
+                            logger.debug('OpenRouter response %s: %s', resp.status_code, resp.text)
+                            if resp.status_code == 200:
+                                answer = resp.json()['choices'][0]['message']['content']
+                                tasks[task_id]['log'].append({'role': 'system', 'content': prompt})
+                                tasks[task_id]['log'].append({'role': 'user', 'content': text_md})
+                                tasks[task_id]['log'].append({'role': 'assistant', 'content': answer})
+                                if 'yes' in answer.lower():
+                                    status = 'spam'
+                            else:
+                                logger.error('OpenRouter error: %s - %s', resp.status_code, resp.text)
+                        except Exception:
+                            pass
 
-            if status == 'spam':
-                logger.debug('Gmail request: add spam label to %s', msg['id'])
-                service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [spam_label], 'removeLabelIds': [whitelist_label]}).execute()
-            elif status == 'whitelist':
-                logger.debug('Gmail request: add whitelist label to %s', msg['id'])
-                service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [whitelist_label], 'removeLabelIds': [spam_label]}).execute()
+                if status == 'spam':
+                    logger.debug('Gmail request: add spam label to %s', msg['id'])
+                    service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [spam_label], 'removeLabelIds': [whitelist_label]}).execute()
+                elif status == 'whitelist':
+                    logger.debug('Gmail request: add whitelist label to %s', msg['id'])
+                    service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [whitelist_label], 'removeLabelIds': [spam_label]}).execute()
 
-            tasks[task_id]['emails'].append({'id': msg['id'], 'subject': subject, 'sender': sender, 'date': date, 'status': status})
+                tasks[task_id]['emails'].append({'id': msg['id'], 'subject': subject, 'sender': sender, 'date': date, 'status': status})
 
-        tasks[task_id]['progress'] = tasks[task_id]['total']
-        tasks[task_id]['stage'] = 'done'
+            tasks[task_id]['progress'] = tasks[task_id]['total']
+            tasks[task_id]['stage'] = 'done'
+        except Exception:
+            import traceback
+            print(traceback.format_exc())
 
     threading.Thread(target=worker).start()
     return jsonify({'task_id': task_id})
