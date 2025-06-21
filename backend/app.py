@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, redirect
 import os
+import logging
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -11,6 +12,9 @@ from dotenv import load_dotenv
 load_dotenv()  # take environment variables
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = app.logger
+logger.setLevel(logging.INFO)
 
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), 'token.json')
@@ -99,23 +103,30 @@ def scan_emails():
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {'stage': 'queued', 'progress': 0, 'total': 0, 'emails': [], 'log': []}
+    logger.info('Starting scan task %s for last %s days', task_id, days)
 
     def worker():
         service = build('gmail', 'v1', credentials=creds)
         spam_label = get_label_id(service, 'shopify-spam')
         whitelist_label = get_label_id(service, 'whitelist')
         # gather whitelisted senders
+        logger.debug('Gmail request: list whitelist emails')
         result = service.users().messages().list(userId='me', q='label:whitelist').execute()
+        logger.debug('Gmail response: %s', result)
         wmsgs = result.get('messages', [])
         whitelist = set()
         for m in wmsgs:
+            logger.debug('Gmail request: get message %s for whitelist', m['id'])
             md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
+            logger.debug('Gmail response: %s', md)
             sender = next((h['value'] for h in md['payload']['headers'] if h['name'].lower() == 'from'), '')
             whitelist.add(sender)
 
         tasks[task_id]['stage'] = 'fetching'
         query = f'label:inbox newer_than:{days}d'
+        logger.debug('Gmail request: list messages "%s"', query)
         results = service.users().messages().list(userId='me', q=query).execute()
+        logger.debug('Gmail response: %s', results)
         messages = results.get('messages', [])
         tasks[task_id]['total'] = len(messages)
         openrouter_key = ''
@@ -126,7 +137,9 @@ def scan_emails():
         for idx, msg in enumerate(messages):
             tasks[task_id]['stage'] = 'processing'
             tasks[task_id]['progress'] = idx
+            logger.debug('Gmail request: get message %s', msg['id'])
             msg_detail = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+            logger.debug('Gmail response: %s', msg_detail)
             payload = msg_detail.get('payload', {})
             headers = payload.get('headers', [])
             subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
@@ -162,7 +175,9 @@ def scan_emails():
                     }
                     headers_req = {'Authorization': f'Bearer {openrouter_key}'}
                     try:
+                        logger.debug('OpenRouter request: %s', data)
                         resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=data, headers=headers_req)
+                        logger.debug('OpenRouter response %s: %s', resp.status_code, resp.text)
                         if resp.status_code == 200:
                             answer = resp.json()['choices'][0]['message']['content']
                             tasks[task_id]['log'].append({'role': 'system', 'content': prompt})
@@ -174,8 +189,10 @@ def scan_emails():
                         pass
 
             if status == 'spam':
+                logger.debug('Gmail request: add spam label to %s', msg['id'])
                 service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [spam_label], 'removeLabelIds': [whitelist_label]}).execute()
             elif status == 'whitelist':
+                logger.debug('Gmail request: add whitelist label to %s', msg['id'])
                 service.users().messages().modify(userId='me', id=msg['id'], body={'addLabelIds': [whitelist_label], 'removeLabelIds': [spam_label]}).execute()
 
             tasks[task_id]['emails'].append({'id': msg['id'], 'subject': subject, 'sender': sender, 'date': date, 'status': status})
@@ -203,11 +220,15 @@ def update_status():
     status = request.json['status']
     spam_label = get_label_id(service, 'shopify-spam')
     whitelist_label = get_label_id(service, 'whitelist')
+    logger.info('Update status request for %s -> %s', msg_id, status)
     if status == 'spam':
+        logger.debug('Gmail request: add spam label to %s', msg_id)
         service.users().messages().modify(userId='me', id=msg_id, body={'addLabelIds': [spam_label], 'removeLabelIds': [whitelist_label]}).execute()
     elif status == 'whitelist':
+        logger.debug('Gmail request: add whitelist label to %s', msg_id)
         service.users().messages().modify(userId='me', id=msg_id, body={'addLabelIds': [whitelist_label], 'removeLabelIds': [spam_label]}).execute()
     else:
+        logger.debug('Gmail request: clear spam/whitelist labels from %s', msg_id)
         service.users().messages().modify(userId='me', id=msg_id, body={'removeLabelIds': [spam_label, whitelist_label]}).execute()
     return ('', 204)
 
@@ -217,15 +238,20 @@ def confirm():
     if not creds:
         return jsonify({'error': 'Not authenticated'}), 401
     service = build('gmail', 'v1', credentials=creds)
+    logger.info('Confirming %s messages as spam', len(request.json.get('ids', [])))
     ids = request.json.get('ids', [])
     for msg_id in ids:
+        logger.debug('Gmail request: get message %s for confirmation', msg_id)
         msg = service.users().messages().get(userId='me', id=msg_id, format='metadata', metadataHeaders=['From']).execute()
+        logger.debug('Gmail response: %s', msg)
         sender = next((h['value'] for h in msg['payload']['headers'] if h['name'].lower() == 'from'), '')
         # Add to block list
+        logger.debug('Gmail request: create filter for %s', sender)
         service.users().settings().filters().create(userId='me', body={
             'criteria': {'from': sender},
             'action': {'addLabelIds': ['SPAM'], 'removeLabelIds': []}
         }).execute()
+        logger.debug('Gmail request: add SPAM label to %s', msg_id)
         service.users().messages().modify(userId='me', id=msg_id, body={'addLabelIds': ['SPAM']}).execute()
     return ('', 204)
 
