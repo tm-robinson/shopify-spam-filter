@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, redirect
 import os
+import json
 import logging
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -79,8 +80,17 @@ def save_openrouter_key():
 def get_credentials():
     if not os.path.exists(TOKEN_FILE):
         return None
-    creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    return creds
+    try:
+        with open(TOKEN_FILE) as f:
+            info = json.load(f)
+        if 'refresh_token' not in info:
+            logger.warning('token.json missing refresh_token')
+            return None
+        creds = Credentials.from_authorized_user_info(info, SCOPES)
+        return creds
+    except Exception as e:
+        logger.error('Failed to load credentials: %s', e)
+        return None
 
 def get_label_id(service, name):
     labels = service.users().labels().list(userId='me').execute().get('labels', [])
