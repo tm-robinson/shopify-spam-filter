@@ -118,6 +118,7 @@ def scan_emails():
 
     def worker():
         try:
+            whitelist=[]
             service = build('gmail', 'v1', credentials=creds)
             spam_label = get_label_id(service, 'shopify-spam')
             whitelist_label = get_label_id(service, 'whitelist')
@@ -125,24 +126,20 @@ def scan_emails():
             logger.debug('Gmail request: list whitelist emails')
             result = service.users().messages().list(userId='me', q='label:whitelist').execute()
             logger.debug('Gmail response: %s', result)
-            wmsgs = result.get('messages', [])
-            payload = msg_detail.get('payload', {}) or {}
-            mime_type = payload.get('mimeType', '')
-                logger.debug('Gmail request: get message %s for whitelist', m['id'])
-                md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
-                logger.debug('Gmail response: %s', md)
-                sender = next((h['value'] for h in md['payload']['headers'] if h['name'].lower() == 'from'), '')
-                whitelist.add(sender)
+            if (result.get('resultSizeEstimate', 1) != 0):
+                wmsgs = result.get('messages', [])
+                for idx, m in enumerate(wmsgs):
+                    logger.debug('Gmail request: get message %s for whitelist', m['id'])
+                    md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
+                    logger.debug('Gmail response: %s', md)
+                    sender = next((h['value'] for h in md['payload']['headers'] if h['name'].lower() == 'from'), '')
+                    whitelist.add(sender)
+
 
             tasks[task_id]['stage'] = 'fetching'
-            mime_type = payload.get('mimeType')
-            if part.get('mimeType') in ('text/plain', 'text/html'):
-                mime_type = part.get('mimeType')
-            if mime_type == 'text/html':
-                body = markdownify(body)
-            words = body.split()
-            body_preview = ' '.join(words[:500])
-            text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
+
+            query=f"after:{days}d"
+
             results = service.users().messages().list(userId='me', q=query).execute()
             logger.debug('Gmail response: %s', results)
             messages = results.get('messages', [])
@@ -177,7 +174,15 @@ def scan_emails():
                 if body:
                     import base64
                     body = base64.urlsafe_b64decode(body).decode('utf-8', errors='ignore')
-                text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body}"
+                
+                mime_type = payload.get('mimeType')
+                if part.get('mimeType') in ('text/plain', 'text/html'):
+                    mime_type = part.get('mimeType')
+                if mime_type == 'text/html':
+                    body = markdownify(body)
+                words = body.split()
+                body_preview = ' '.join(words[:500])
+                text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
 
                 status = 'not_spam'
                 if whitelist_label in label_ids or sender in whitelist:
