@@ -126,8 +126,8 @@ def scan_emails():
             result = service.users().messages().list(userId='me', q='label:whitelist').execute()
             logger.debug('Gmail response: %s', result)
             wmsgs = result.get('messages', [])
-            whitelist = set()
-            for m in wmsgs:
+            payload = msg_detail.get('payload', {}) or {}
+            mime_type = payload.get('mimeType', '')
                 logger.debug('Gmail request: get message %s for whitelist', m['id'])
                 md = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['From']).execute()
                 logger.debug('Gmail response: %s', md)
