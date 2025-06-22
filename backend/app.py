@@ -52,7 +52,7 @@ def auth():
         scopes=SCOPES,
         redirect_uri=(f"{frontend}/oauth2callback"),
     )
-    auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    auth_url, _ = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
     return redirect(auth_url)
 
 @app.route('/oauth2callback')
