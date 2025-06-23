@@ -9,7 +9,8 @@ import requests
 import threading
 import uuid
 import base64
-from markdownify import markdownify
+from bs4 import BeautifulSoup
+import re
 
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables
@@ -104,7 +105,7 @@ def get_label_id(service, name):
 
 # Recursively extract the first text or html body from a message payload.
 def extract_email_body(payload):
-    """Return decoded body text and its mime type."""
+    """Return decoded plain text body and its mime type."""
 
     def find_part(part, mime):
         if (
@@ -122,13 +123,22 @@ def extract_email_body(payload):
                 return found
         return None
 
+    def html_to_plain_text(html: str) -> str:
+        """Convert HTML to plain text stripping formatting and links."""
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a'):
+            a.replace_with(a.get_text())
+        text = soup.get_text(separator=' ')
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
     body = find_part(payload, 'text/plain')
     mime = 'text/plain'
     if not body:
         body = find_part(payload, 'text/html')
         mime = 'text/html' if body else ''
     if body and mime == 'text/html':
-        body = markdownify(body)
+        body = html_to_plain_text(body)
     return body or '', mime
 
 @app.route('/scan-emails', methods=['POST'])
@@ -148,7 +158,7 @@ def scan_emails():
 
     def worker():
         try:
-            whitelist=[]
+            whitelist=set()
             service = build('gmail', 'v1', credentials=creds)
             spam_label = get_label_id(service, 'shopify-spam')
             whitelist_label = get_label_id(service, 'whitelist')
