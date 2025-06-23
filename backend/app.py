@@ -8,6 +8,7 @@ from googleapiclient.discovery import build
 import requests
 import threading
 import uuid
+import base64
 from markdownify import markdownify
 
 from dotenv import load_dotenv
@@ -101,6 +102,35 @@ def get_label_id(service, name):
     label = service.users().labels().create(userId='me', body={'name': name}).execute()
     return label['id']
 
+# Recursively extract the first text or html body from a message payload.
+def extract_email_body(payload):
+    """Return decoded body text and its mime type."""
+
+    def find_part(part, mime):
+        if (
+            part.get('mimeType') == mime
+            and not part.get('filename')
+            and 'body' in part
+        ):
+            data = part['body'].get('data')
+            if data:
+                text = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                return text
+        for sub in part.get('parts', []):
+            found = find_part(sub, mime)
+            if found:
+                return found
+        return None
+
+    body = find_part(payload, 'text/plain')
+    mime = 'text/plain'
+    if not body:
+        body = find_part(payload, 'text/html')
+        mime = 'text/html' if body else ''
+    if body and mime == 'text/html':
+        body = markdownify(body)
+    return body or '', mime
+
 @app.route('/scan-emails', methods=['POST'])
 def scan_emails():
     """Start a background scan task and return its id"""
@@ -162,24 +192,7 @@ def scan_emails():
                 date = next((h['value'] for h in headers if h['name'].lower() == 'date'), '')
                 label_ids = msg_detail.get('labelIds', [])
 
-                parts = payload.get('parts', [])
-                body = ''
-                if 'body' in payload and 'data' in payload['body']:
-                    body = payload['body']['data']
-                elif parts:
-                    for part in parts:
-                        if part.get('mimeType') == 'text/plain':
-                            body = part['body'].get('data', '')
-                            break
-                if body:
-                    import base64
-                    body = base64.urlsafe_b64decode(body).decode('utf-8', errors='ignore')
-                
-                mime_type = payload.get('mimeType')
-                if part.get('mimeType') in ('text/plain', 'text/html'):
-                    mime_type = part.get('mimeType')
-                if mime_type == 'text/html':
-                    body = markdownify(body)
+                body, _ = extract_email_body(payload)
                 words = body.split()
                 body_preview = ' '.join(words[:500])
                 text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
