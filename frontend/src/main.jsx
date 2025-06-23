@@ -4,7 +4,7 @@ import './App.css';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
-  const [prompt, setPrompt] = useState('Identify shopify abandoned basket spam emails. Return yes or no.');
+  const [prompt, setPrompt] = useState('Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.');
   const [emails, setEmails] = useState([]);
   const [chatLog, setChatLog] = useState([]);
   const [days, setDays] = useState(10);

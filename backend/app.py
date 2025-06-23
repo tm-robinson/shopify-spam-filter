@@ -134,11 +134,13 @@ def extract_email_body(payload):
 
     body = find_part(payload, 'text/plain')
     mime = 'text/plain'
+    logger.info(f"body is plain text: {body}")
     if not body:
         body = find_part(payload, 'text/html')
         mime = 'text/html' if body else ''
     if body and mime == 'text/html':
         body = html_to_plain_text(body)
+        logger.info(f"body is html: {body}")
     return body or '', mime
 
 @app.route('/scan-emails', methods=['POST'])
@@ -149,7 +151,7 @@ def scan_emails():
         return jsonify({'error': 'Not authenticated'}), 401
 
     data = request.get_json() or {}
-    prompt = data.get('prompt', 'Identify shopify abandoned basket spam emails. Return yes or no.')
+    prompt = data.get('prompt', 'Describe what emails to identify')
     days = int(data.get('days', 10))
 
     task_id = str(uuid.uuid4())
@@ -215,7 +217,7 @@ def scan_emails():
                         data = {
                             'model': 'deepseek/deepseek-chat-v3-0324:free',
                             'messages': [
-                                {'role': 'system', 'content': prompt},
+                                {'role': 'system', 'content': prompt + " Start your response with <RESULT>YES</RESULT> or <RESULT>NO</RESULT> followed by the justification for your answer."},
                                 {'role': 'user', 'content': text_md}
                             ]
                         }
