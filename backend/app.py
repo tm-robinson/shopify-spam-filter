@@ -17,7 +17,7 @@ load_dotenv()  # take environment variables
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), 'token.json')
@@ -211,9 +211,9 @@ def scan_emails():
                         }
                         headers_req = {'Authorization': f'Bearer {openrouter_key}'}
                         try:
-                            logger.debug('OpenRouter request: %s', data)
+                            logger.info('OpenRouter request: %s', data)
                             resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=data, headers=headers_req)
-                            logger.debug('OpenRouter response %s: %s', resp.status_code, resp.text)
+                            logger.info('OpenRouter response %s: %s', resp.status_code, resp.text)
                             if resp.status_code == 200:
                                 answer = resp.json()['choices'][0]['message']['content']
                                 tasks[task_id]['log'].append({'role': 'system', 'content': prompt})
