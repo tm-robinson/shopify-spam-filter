@@ -8,7 +8,9 @@ from googleapiclient.discovery import build
 import requests
 import threading
 import uuid
-from markdownify import markdownify
+import base64
+from bs4 import BeautifulSoup
+import re
 
 from dotenv import load_dotenv
 load_dotenv()  # take environment variables
@@ -16,7 +18,7 @@ load_dotenv()  # take environment variables
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), 'token.json')
@@ -101,6 +103,49 @@ def get_label_id(service, name):
     label = service.users().labels().create(userId='me', body={'name': name}).execute()
     return label['id']
 
+# Recursively extract the text or html body from a message payload.
+def extract_email_body(payload):
+    """Return decoded plain text body prioritising HTML."""
+
+    def collect_parts(part, results):
+        if (
+            part.get('mimeType') in ('text/plain', 'text/html')
+            and not part.get('filename')
+            and 'body' in part
+        ):
+            data = part['body'].get('data')
+            if data:
+                text = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                results.append((text, part.get('mimeType')))
+        for sub in part.get('parts', []):
+            collect_parts(sub, results)
+
+    def html_to_plain_text(html: str) -> str:
+        """Convert HTML to plain text stripping formatting and links."""
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a'):
+            a.replace_with(a.get_text())
+        text = soup.get_text(separator=' ')
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    parts = []
+    collect_parts(payload, parts)
+
+    html_part = next((t for t, m in parts if m == 'text/html'), None)
+    if html_part:
+        return html_to_plain_text(html_part), 'text/html'
+
+    text_part = next((t for t, m in parts if m == 'text/plain'), None)
+    if text_part:
+        text_part = re.sub(r'https?://\S+', '', text_part)
+        text_part = re.sub(r'\s+', ' ', text_part).strip()
+        return text_part, 'text/plain'
+
+    return '', ''
+        logger.info(f"body is html: {body}")
+    return body or '', mime
+
 @app.route('/scan-emails', methods=['POST'])
 def scan_emails():
     """Start a background scan task and return its id"""
@@ -109,7 +154,7 @@ def scan_emails():
         return jsonify({'error': 'Not authenticated'}), 401
 
     data = request.get_json() or {}
-    prompt = data.get('prompt', 'Identify shopify abandoned basket spam emails. Return yes or no.')
+    prompt = data.get('prompt', 'Describe what emails to identify')
     days = int(data.get('days', 10))
 
     task_id = str(uuid.uuid4())
@@ -118,7 +163,7 @@ def scan_emails():
 
     def worker():
         try:
-            whitelist=[]
+            whitelist=set()
             service = build('gmail', 'v1', credentials=creds)
             spam_label = get_label_id(service, 'shopify-spam')
             whitelist_label = get_label_id(service, 'whitelist')
@@ -162,24 +207,7 @@ def scan_emails():
                 date = next((h['value'] for h in headers if h['name'].lower() == 'date'), '')
                 label_ids = msg_detail.get('labelIds', [])
 
-                parts = payload.get('parts', [])
-                body = ''
-                if 'body' in payload and 'data' in payload['body']:
-                    body = payload['body']['data']
-                elif parts:
-                    for part in parts:
-                        if part.get('mimeType') == 'text/plain':
-                            body = part['body'].get('data', '')
-                            break
-                if body:
-                    import base64
-                    body = base64.urlsafe_b64decode(body).decode('utf-8', errors='ignore')
-                
-                mime_type = payload.get('mimeType')
-                if part.get('mimeType') in ('text/plain', 'text/html'):
-                    mime_type = part.get('mimeType')
-                if mime_type == 'text/html':
-                    body = markdownify(body)
+                body, _ = extract_email_body(payload)
                 words = body.split()
                 body_preview = ' '.join(words[:500])
                 text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
@@ -192,15 +220,15 @@ def scan_emails():
                         data = {
                             'model': 'deepseek/deepseek-chat-v3-0324:free',
                             'messages': [
-                                {'role': 'system', 'content': prompt},
+                                {'role': 'system', 'content': prompt + " Start your response with <RESULT>YES</RESULT> or <RESULT>NO</RESULT> followed by the justification for your answer."},
                                 {'role': 'user', 'content': text_md}
                             ]
                         }
                         headers_req = {'Authorization': f'Bearer {openrouter_key}'}
                         try:
-                            logger.debug('OpenRouter request: %s', data)
+                            logger.info('OpenRouter request: %s', data)
                             resp = requests.post('https://openrouter.ai/api/v1/chat/completions', json=data, headers=headers_req)
-                            logger.debug('OpenRouter response %s: %s', resp.status_code, resp.text)
+                            logger.info('OpenRouter response %s: %s', resp.status_code, resp.text)
                             if resp.status_code == 200:
                                 answer = resp.json()['choices'][0]['message']['content']
                                 tasks[task_id]['log'].append({'role': 'system', 'content': prompt})
