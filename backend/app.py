@@ -103,25 +103,22 @@ def get_label_id(service, name):
     label = service.users().labels().create(userId='me', body={'name': name}).execute()
     return label['id']
 
-# Recursively extract the first text or html body from a message payload.
+# Recursively extract the text or html body from a message payload.
 def extract_email_body(payload):
-    """Return decoded plain text body and its mime type."""
+    """Return decoded plain text body prioritising HTML."""
 
-    def find_part(part, mime):
+    def collect_parts(part, results):
         if (
-            part.get('mimeType') == mime
+            part.get('mimeType') in ('text/plain', 'text/html')
             and not part.get('filename')
             and 'body' in part
         ):
             data = part['body'].get('data')
             if data:
                 text = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-                return text
+                results.append((text, part.get('mimeType')))
         for sub in part.get('parts', []):
-            found = find_part(sub, mime)
-            if found:
-                return found
-        return None
+            collect_parts(sub, results)
 
     def html_to_plain_text(html: str) -> str:
         """Convert HTML to plain text stripping formatting and links."""
@@ -132,14 +129,20 @@ def extract_email_body(payload):
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
-    body = find_part(payload, 'text/plain')
-    mime = 'text/plain'
-    logger.info(f"body is plain text: {body}")
-    if not body:
-        body = find_part(payload, 'text/html')
-        mime = 'text/html' if body else ''
-    if body and mime == 'text/html':
-        body = html_to_plain_text(body)
+    parts = []
+    collect_parts(payload, parts)
+
+    html_part = next((t for t, m in parts if m == 'text/html'), None)
+    if html_part:
+        return html_to_plain_text(html_part), 'text/html'
+
+    text_part = next((t for t, m in parts if m == 'text/plain'), None)
+    if text_part:
+        text_part = re.sub(r'https?://\S+', '', text_part)
+        text_part = re.sub(r'\s+', ' ', text_part).strip()
+        return text_part, 'text/plain'
+
+    return '', ''
         logger.info(f"body is html: {body}")
     return body or '', mime
 
