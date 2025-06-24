@@ -11,12 +11,21 @@ This project consists of a **Python Flask backend** and a **React frontend**. Th
 - All changes should be minimal, readable, and consistent with the current codebase.
 - When in doubt, prefer clarity over cleverness.
 - Do not add new dependencies without a documented justification.
+- The functionality should be documented as user stories within PROJECT_BACKLOG.md.  Always keep this up to date, adding or updating any user stories as needed.
+- Test scenarios are also held in PROJECT_BACKLOG.md within each user story.
+- Each user story and test scenario has a status of TODO or DONE to show whether it has been implemented.
+- Whenever the code is changed, leave a comment that begins with CODEX: to explain the change.
+- All changes should be added to WORK_LOG.md.
 
+
+mention user stories in commit messages
+maintain a WORK_LOG.md showing what has been built when and what files/folders it affects
+create/maintain a test suite and run it pre commit
 ---
 
 ## Code Style
 
-### Python (Flask)
+### Python
 - Format all code using **Black**.
 - Lint with **flake8** before submitting code.
 - Avoid single-letter or ambiguous variable names.
@@ -43,11 +52,14 @@ Agents should respect this structure and place new files accordingly.
 ## Git and PR Instructions
 
 - Use descriptive branch names: `feature/<summary>`, `fix/<summary>`, etc.
-- PR title format: `[Feature] Summary of change`
+- PR title format: `CODEX: [Feature] Summary of change`
 - Each PR must include:
   - A one-line summary of the change
+  - A list of user stories the change implements
   - A list of modified files or major components affected
   - Any known side effects or caveats
+  - A description of any testing performed
+- Commit message format: `CODEX: Summary of change`
 
 ---
 
@@ -57,6 +69,7 @@ Agents should respect this structure and place new files accordingly.
 
 - Manual testing instructions should be provided in the PR when applicable.
 - If you add any test files or test scaffolding, place them in `backend/tests/` or `frontend/__tests__/`.
+- Document the test scenarios underneath the relevant user story in PROJECT_BACKLOG.md
 
 ---
 
@@ -74,6 +87,6 @@ If you are an AI agent making modifications:
 - Do not refactor unrelated code unless explicitly requested.
 - Leave comments marking your changes using the format:
   ```python
-  # [AI] Changed X to Y to achieve Z
+  # CODEX: Changed X to Y to achieve Z
   ```
 - Avoid speculative changes — prioritize instructions and commit messages over assumptions.

@@ -134,17 +134,18 @@ def extract_email_body(payload):
 
     html_part = next((t for t, m in parts if m == 'text/html'), None)
     if html_part:
-        return html_to_plain_text(html_part), 'text/html'
+        body = html_to_plain_text(html_part)
+        logger.info(f"body is html: {body}")
+        return body, 'text/html'
 
     text_part = next((t for t, m in parts if m == 'text/plain'), None)
     if text_part:
         text_part = re.sub(r'https?://\S+', '', text_part)
         text_part = re.sub(r'\s+', ' ', text_part).strip()
+        logger.info(f"body is plaintext: {text_part}")
         return text_part, 'text/plain'
 
     return '', ''
-        logger.info(f"body is html: {body}")
-    return body or '', mime
 
 @app.route('/scan-emails', methods=['POST'])
 def scan_emails():
