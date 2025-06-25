@@ -157,6 +157,12 @@ function App() {
                   >
                     Whitelist
                   </button>
+                  <button
+                    className={`ignore ${e.status === "ignore" ? "active" : ""}`}
+                    onClick={() => updateStatus(e.id, "ignore")}
+                  >
+                    Ignore
+                  </button>
                 </td>
               </tr>
             ))}

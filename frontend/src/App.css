@@ -1,14 +1,62 @@
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f5f5; }
-.container { display:flex; height:100vh; }
-.main { flex:1; padding:20px; overflow-y:auto; }
-.chat-log { width:30%; max-width:400px; border-left:1px solid #ccc; background:#fff; padding:10px; overflow-y:auto; }
-table { width:100%; border-collapse:collapse; margin-top:10px; }
-th,td { padding:8px; border-bottom:1px solid #ddd; }
-button { margin-right:5px; }
-button.active { font-weight:bold; }
-button.spam.active { background:#ffdddd; }
-button.not-spam.active { background:#ddffdd; }
-button.whitelist.active { background:#ddddff; }
-.progress { margin:10px 0; }
-.chat-user { color:#333; margin-bottom:5px; }
-.chat-assistant { color:#555; margin-bottom:5px; }
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+}
+.container {
+  display: flex;
+  height: 100vh;
+}
+.main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+.chat-log {
+  width: 30%;
+  max-width: 400px;
+  border-left: 1px solid #ccc;
+  background: #fff;
+  padding: 10px;
+  overflow-y: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+th,
+td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+button {
+  margin-right: 5px;
+}
+button.active {
+  font-weight: bold;
+}
+button.spam.active {
+  background: #ffdddd;
+}
+button.not-spam.active {
+  background: #ddffdd;
+}
+button.whitelist.active {
+  background: #ddddff;
+}
+button.ignore.active {
+  background: #ffffdd;
+}
+.progress {
+  margin: 10px 0;
+}
+.chat-user {
+  color: #333;
+  margin-bottom: 5px;
+}
+.chat-assistant {
+  color: #555;
+  margin-bottom: 5px;
+}

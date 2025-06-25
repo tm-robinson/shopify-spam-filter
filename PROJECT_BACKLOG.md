@@ -29,3 +29,9 @@
 *   Verify that the UI displays a list of processed emails. (TODO)
 *   Verify that the UI displays the extracted information and analysis results. (TODO)
 
+#### User Story: Ignore emails by sender using Gmail label (DONE)
+**Description:** As a user, I want to mark emails as "ignore" so that future emails from the same sender are skipped and not sent to the LLM.
+**Test Scenarios:**
+*   Mark an email as ignore and verify the "spam-filter-ignore" label is added. (TODO)
+*   New emails from the ignored sender are automatically marked as ignored. (TODO)
+
