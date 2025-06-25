@@ -104,19 +104,12 @@ def get_credentials():
 
 
 def get_label_id(service, name):
-    labels = (
-        service.users().labels().list(userId="me").execute().get("labels", [])
-    )
+    labels = service.users().labels().list(userId="me").execute().get("labels", [])
     for lbl in labels:
         if lbl["name"].lower() == name.lower():
             return lbl["id"]
     # create label if not exists
-    label = (
-        service.users()
-        .labels()
-        .create(userId="me", body={"name": name})
-        .execute()
-    )
+    label = service.users().labels().create(userId="me", body={"name": name}).execute()
     return label["id"]
 
 
@@ -132,9 +125,7 @@ def extract_email_body(payload):
         ):
             data = part["body"].get("data")
             if data:
-                text = base64.urlsafe_b64decode(data).decode(
-                    "utf-8", errors="ignore"
-                )
+                text = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
                 results.append((text, part.get("mimeType")))
         for sub in part.get("parts", []):
             collect_parts(sub, results)
@@ -191,9 +182,11 @@ def scan_emails():
     def worker():
         try:
             whitelist = set()
+            ignorelist = set()
             service = build("gmail", "v1", credentials=creds)
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
+            ignore_label = get_label_id(service, "spam-filter-ignore")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
             result = (
@@ -206,9 +199,7 @@ def scan_emails():
             if result.get("resultSizeEstimate", 1) != 0:
                 wmsgs = result.get("messages", [])
                 for idx, m in enumerate(wmsgs):
-                    logger.debug(
-                        "Gmail request: get message %s for whitelist", m["id"]
-                    )
+                    logger.debug("Gmail request: get message %s for whitelist", m["id"])
                     md = (
                         service.users()
                         .messages()
@@ -231,13 +222,46 @@ def scan_emails():
                     )
                     whitelist.add(sender)
 
+            # gather ignored senders
+            logger.debug("Gmail request: list ignore emails")
+            result = (
+                service.users()
+                .messages()
+                .list(userId="me", q="label:spam-filter-ignore")
+                .execute()
+            )
+            logger.debug("Gmail response: %s", result)
+            if result.get("resultSizeEstimate", 1) != 0:
+                imsgs = result.get("messages", [])
+                for idx, m in enumerate(imsgs):
+                    logger.debug("Gmail request: get message %s for ignore", m["id"])
+                    md = (
+                        service.users()
+                        .messages()
+                        .get(
+                            userId="me",
+                            id=m["id"],
+                            format="metadata",
+                            metadataHeaders=["From"],
+                        )
+                        .execute()
+                    )
+                    logger.debug("Gmail response: %s", md)
+                    sender = next(
+                        (
+                            h["value"]
+                            for h in md["payload"]["headers"]
+                            if h["name"].lower() == "from"
+                        ),
+                        "",
+                    )
+                    ignorelist.add(sender)
+
             tasks[task_id]["stage"] = "fetching"
 
             query = f"after:{days}d"
 
-            results = (
-                service.users().messages().list(userId="me", q=query).execute()
-            )
+            results = service.users().messages().list(userId="me", q=query).execute()
             logger.debug("Gmail response: %s", results)
             messages = results.get("messages", [])
             tasks[task_id]["total"] = len(messages)
@@ -260,27 +284,15 @@ def scan_emails():
                 payload = msg_detail.get("payload", {})
                 headers = payload.get("headers", [])
                 subject = next(
-                    (
-                        h["value"]
-                        for h in headers
-                        if h["name"].lower() == "subject"
-                    ),
+                    (h["value"] for h in headers if h["name"].lower() == "subject"),
                     "",
                 )
                 sender = next(
-                    (
-                        h["value"]
-                        for h in headers
-                        if h["name"].lower() == "from"
-                    ),
+                    (h["value"] for h in headers if h["name"].lower() == "from"),
                     "",
                 )
                 date = next(
-                    (
-                        h["value"]
-                        for h in headers
-                        if h["name"].lower() == "date"
-                    ),
+                    (h["value"] for h in headers if h["name"].lower() == "date"),
                     "",
                 )
                 label_ids = msg_detail.get("labelIds", [])
@@ -288,12 +300,12 @@ def scan_emails():
                 body, _ = extract_email_body(payload)
                 words = body.split()
                 body_preview = " ".join(words[:500])
-                text_md = (
-                    f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
-                )
+                text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
 
                 status = "not_spam"
-                if whitelist_label in label_ids or sender in whitelist:
+                if ignore_label in label_ids or sender in ignorelist:
+                    status = "ignore"
+                elif whitelist_label in label_ids or sender in whitelist:
                     status = "whitelist"
                 else:
                     if openrouter_key:
@@ -316,14 +328,11 @@ def scan_emails():
                                 {"role": "user", "content": text_md},
                             ],
                         }
-                        headers_req = {
-                            "Authorization": f"Bearer {openrouter_key}"
-                        }
+                        headers_req = {"Authorization": f"Bearer {openrouter_key}"}
                         try:
                             logger.info("OpenRouter request: %s", data)
                             resp = requests.post(
-                                "https://openrouter.ai/api/v1/"
-                                "chat/completions",
+                                "https://openrouter.ai/api/v1/" "chat/completions",
                                 json=data,
                                 headers=headers_req,
                             )
@@ -333,9 +342,7 @@ def scan_emails():
                                 resp.text,
                             )
                             if resp.status_code == 200:
-                                answer = resp.json()["choices"][0]["message"][
-                                    "content"
-                                ]
+                                answer = resp.json()["choices"][0]["message"]["content"]
                                 tasks[task_id]["log"].append(
                                     {"role": "system", "content": prompt}
                                 )
@@ -357,9 +364,7 @@ def scan_emails():
                             pass
 
                 if status == "spam":
-                    logger.debug(
-                        "Gmail request: add spam label to %s", msg["id"]
-                    )
+                    logger.debug("Gmail request: add spam label to %s", msg["id"])
                     service.users().messages().modify(
                         userId="me",
                         id=msg["id"],
@@ -369,15 +374,23 @@ def scan_emails():
                         },
                     ).execute()
                 elif status == "whitelist":
-                    logger.debug(
-                        "Gmail request: add whitelist label to %s", msg["id"]
-                    )
+                    logger.debug("Gmail request: add whitelist label to %s", msg["id"])
                     service.users().messages().modify(
                         userId="me",
                         id=msg["id"],
                         body={
                             "addLabelIds": [whitelist_label],
                             "removeLabelIds": [spam_label],
+                        },
+                    ).execute()
+                elif status == "ignore":
+                    logger.debug("Gmail request: add ignore label to %s", msg["id"])
+                    service.users().messages().modify(
+                        userId="me",
+                        id=msg["id"],
+                        body={
+                            "addLabelIds": [ignore_label],
+                            "removeLabelIds": [spam_label, whitelist_label],
                         },
                     ).execute()
 
@@ -420,6 +433,7 @@ def update_status():
     status = request.json["status"]
     spam_label = get_label_id(service, "shopify-spam")
     whitelist_label = get_label_id(service, "whitelist")
+    ignore_label = get_label_id(service, "spam-filter-ignore")
     logger.info("Update status request for %s -> %s", msg_id, status)
     if status == "spam":
         logger.debug("Gmail request: add spam label to %s", msg_id)
@@ -428,7 +442,7 @@ def update_status():
             id=msg_id,
             body={
                 "addLabelIds": [spam_label],
-                "removeLabelIds": [whitelist_label],
+                "removeLabelIds": [whitelist_label, ignore_label],
             },
         ).execute()
     elif status == "whitelist":
@@ -438,17 +452,27 @@ def update_status():
             id=msg_id,
             body={
                 "addLabelIds": [whitelist_label],
-                "removeLabelIds": [spam_label],
+                "removeLabelIds": [spam_label, ignore_label],
+            },
+        ).execute()
+    elif status == "ignore":
+        logger.debug("Gmail request: add ignore label to %s", msg_id)
+        service.users().messages().modify(
+            userId="me",
+            id=msg_id,
+            body={
+                "addLabelIds": [ignore_label],
+                "removeLabelIds": [spam_label, whitelist_label],
             },
         ).execute()
     else:
         logger.debug(
-            "Gmail request: clear spam/whitelist labels from %s", msg_id
+            "Gmail request: clear spam/whitelist/ignore labels from %s", msg_id
         )
         service.users().messages().modify(
             userId="me",
             id=msg_id,
-            body={"removeLabelIds": [spam_label, whitelist_label]},
+            body={"removeLabelIds": [spam_label, whitelist_label, ignore_label]},
         ).execute()
     return ("", 204)
 
@@ -459,9 +483,7 @@ def confirm():
     if not creds:
         return jsonify({"error": "Not authenticated"}), 401
     service = build("gmail", "v1", credentials=creds)
-    logger.info(
-        "Confirming %s messages as spam", len(request.json.get("ids", []))
-    )
+    logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     ids = request.json.get("ids", [])
     for msg_id in ids:
         logger.debug("Gmail request: get message %s for confirmation", msg_id)

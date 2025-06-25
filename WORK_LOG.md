@@ -8,3 +8,5 @@
 - Updated user story status in PROJECT_BACKLOG.md.
 - Reformatted backend with Black and frontend with Prettier.
 - Restored TODO status for UI test scenarios.
+- Added ignore feature with new Gmail label and UI button.
+- Updated PROJECT_BACKLOG with ignore user story.
