@@ -14,13 +14,13 @@ This project consists of a **Python Flask backend** and a **React frontend**. Th
 - The functionality should be documented as user stories within PROJECT_BACKLOG.md.  Always keep this up to date, adding or updating any user stories as needed.
 - Test scenarios are also held in PROJECT_BACKLOG.md within each user story.
 - Each user story and test scenario has a status of TODO or DONE to show whether it has been implemented.
+- If new functionality is implemented that is not in PROJECT_BACKLOG.md, add a new user story for it in there.
+- If tests are implemented, the test scenarios within PROJECT_BACKLOG.md should be updated to replace TODO with DONE.  This represents the status of the automated test, rather than the status of the functionality within the user story itself.
 - Whenever the code is changed, leave a comment that begins with CODEX: to explain the change.
 - All changes should be added to WORK_LOG.md.
-
-
-mention user stories in commit messages
-maintain a WORK_LOG.md showing what has been built when and what files/folders it affects
-create/maintain a test suite and run it pre commit
+- Mention user stories in commit messages
+- Maintain a WORK_LOG.md showing what has been built when and what files/folders it affects.  Always add to the bottom of the WORK_LOG.md for any changes, but ensure that today's date is used as the section heading.  If there is already a section for today's date, don't create a new section, just add extra items to it.
+- Create/maintain a test suite and run it pre commit
 ---
 
 ## Code Style
