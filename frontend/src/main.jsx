@@ -9,6 +9,7 @@ function App() {
   const [chatLog, setChatLog] = useState([]);
   const [days, setDays] = useState(10);
   const [task, setTask] = useState(null);
+  const [pollInterval, setPollInterval] = useState(1); // seconds
 
   const linkGmail = () => {
     window.location.href = '/auth';
@@ -28,6 +29,7 @@ function App() {
 
   useEffect(() => {
     if (!task || !task.id) return;
+    const intervalMs = pollInterval * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
         .then(r => r.json())
@@ -39,9 +41,9 @@ function App() {
             clearInterval(interval);
           }
         });
-    }, 1000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [task?.id]);
+  }, [task?.id, pollInterval]);
 
   const updateStatus = (id, status) => {
     fetch('/update-status', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status})});
@@ -68,6 +70,10 @@ function App() {
         <div>
           <label>Days: {days}</label>
           <input type="range" min="1" max="60" value={days} onChange={e => setDays(e.target.value)} />
+        </div>
+        <div>
+          <label>Poll Interval (s): </label>
+          <input type="number" min="1" value={pollInterval} onChange={e => setPollInterval(parseInt(e.target.value, 10) || 1)} />
         </div>
         <button onClick={scan}>Scan Emails</button>
         {task && task.stage !== 'done' && (
