@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import "./App.css";
 
 function App() {
-  const [apiKey, setApiKey] = useState('');
-  const [prompt, setPrompt] = useState('Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.');
+  const [apiKey, setApiKey] = useState("");
+  const [prompt, setPrompt] = useState(
+    "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.",
+  );
   const [emails, setEmails] = useState([]);
   const [chatLog, setChatLog] = useState([]);
   const [days, setDays] = useState(10);
@@ -12,18 +14,26 @@ function App() {
   const [pollInterval, setPollInterval] = useState(1); // seconds
 
   const linkGmail = () => {
-    window.location.href = '/auth';
+    window.location.href = "/auth";
   };
 
   const saveKey = () => {
-    fetch('/openrouter-key', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key: apiKey})});
+    fetch("/openrouter-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: apiKey }),
+    });
   };
 
   const scan = () => {
-    fetch('/scan-emails', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({prompt, days})})
-      .then(r => r.json())
-      .then(data => {
-        setTask({id: data.task_id});
+    fetch("/scan-emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, days }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setTask({ id: data.task_id });
       });
   };
 
@@ -32,12 +42,13 @@ function App() {
     const intervalMs = pollInterval * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
-        .then(r => r.json())
-        .then(d => {
-          setTask(d);
+        .then((r) => r.json())
+        .then((d) => {
+          // CODEX: Preserve task id so polling continues
+          setTask((prev) => ({ ...prev, ...d }));
           setEmails(d.emails);
           setChatLog(d.log);
-          if (d.stage === 'done') {
+          if (d.stage === "done") {
             clearInterval(interval);
           }
         });
@@ -46,13 +57,21 @@ function App() {
   }, [task?.id, pollInterval]);
 
   const updateStatus = (id, status) => {
-    fetch('/update-status', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status})});
-    setEmails(emails.map(e => e.id === id ? {...e, status} : e));
+    fetch("/update-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    setEmails(emails.map((e) => (e.id === id ? { ...e, status } : e)));
   };
 
   const confirm = () => {
-    const ids = emails.filter(e => e.status === 'spam').map(e => e.id);
-    fetch('/confirm', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ids})});
+    const ids = emails.filter((e) => e.status === "spam").map((e) => e.id);
+    fetch("/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
   };
 
   return (
@@ -61,41 +80,83 @@ function App() {
         <h1>Shopify Spam Filter</h1>
         <button onClick={linkGmail}>Link Gmail</button>
         <div>
-          <input placeholder="OpenRouter API Key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
+          <input
+            placeholder="OpenRouter API Key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
           <button onClick={saveKey}>Save Key</button>
         </div>
         <div>
-          <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows="3" cols="60" />
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows="3"
+            cols="60"
+          />
         </div>
         <div>
           <label>Days: {days}</label>
-          <input type="range" min="1" max="60" value={days} onChange={e => setDays(e.target.value)} />
+          <input
+            type="range"
+            min="1"
+            max="60"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+          />
         </div>
         <div>
           <label>Poll Interval (s): </label>
-          <input type="number" min="1" value={pollInterval} onChange={e => setPollInterval(parseInt(e.target.value, 10) || 1)} />
+          <input
+            type="number"
+            min="1"
+            value={pollInterval}
+            onChange={(e) => setPollInterval(parseInt(e.target.value, 10) || 1)}
+          />
         </div>
         <button onClick={scan}>Scan Emails</button>
-        {task && task.stage !== 'done' && (
+        {task && task.stage !== "done" && (
           <div className="progress">
-            <div>{task.stage} {task.progress}/{task.total}</div>
+            <div>
+              {task.stage} {task.progress}/{task.total}
+            </div>
             <progress value={task.progress} max={task.total || 1}></progress>
           </div>
         )}
         <table>
           <thead>
-            <tr><th>Sender</th><th>Subject</th><th>Date</th><th>Action</th></tr>
+            <tr>
+              <th>Sender</th>
+              <th>Subject</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
           </thead>
           <tbody>
-            {emails.map(e => (
+            {emails.map((e) => (
               <tr key={e.id}>
                 <td>{e.sender}</td>
                 <td>{e.subject}</td>
                 <td>{e.date}</td>
                 <td>
-                  <button className={`spam ${e.status==='spam'?'active':''}`} onClick={() => updateStatus(e.id,'spam')}>Spam</button>
-                  <button className={`not-spam ${e.status==='not_spam'?'active':''}`} onClick={() => updateStatus(e.id,'not_spam')}>Not Spam</button>
-                  <button className={`whitelist ${e.status==='whitelist'?'active':''}`} onClick={() => updateStatus(e.id,'whitelist')}>Whitelist</button>
+                  <button
+                    className={`spam ${e.status === "spam" ? "active" : ""}`}
+                    onClick={() => updateStatus(e.id, "spam")}
+                  >
+                    Spam
+                  </button>
+                  <button
+                    className={`not-spam ${e.status === "not_spam" ? "active" : ""}`}
+                    onClick={() => updateStatus(e.id, "not_spam")}
+                  >
+                    Not Spam
+                  </button>
+                  <button
+                    className={`whitelist ${e.status === "whitelist" ? "active" : ""}`}
+                    onClick={() => updateStatus(e.id, "whitelist")}
+                  >
+                    Whitelist
+                  </button>
                 </td>
               </tr>
             ))}
@@ -105,13 +166,14 @@ function App() {
       </div>
       <div className="chat-log">
         {chatLog.map((c, i) => (
-          <div key={i} className={`chat-${c.role}`}>{c.role}: {c.content}</div>
+          <div key={i} className={`chat-${c.role}`}>
+            {c.role}: {c.content}
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
-

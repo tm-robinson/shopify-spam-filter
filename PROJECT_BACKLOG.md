@@ -23,7 +23,7 @@
 *   Verify that the LLM correctly flags emails as YES or NO. (TODO)
 *   Verify that the LLM response can be parsed correctly. (TODO)
 
-#### User Story: View processed email data in a user interface (TODO)
+#### User Story: View processed email data in a user interface (DONE)
 **Description:** As a user, I want to view the processed email data and the results of the AI analysis in a clear and intuitive user interface.
 **Test Scenarios:**
 *   Verify that the UI displays a list of processed emails. (TODO)
