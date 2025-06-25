@@ -143,8 +143,6 @@ def extract_email_body(payload):
         return text_part, 'text/plain'
 
     return '', ''
-        logger.info(f"body is html: {body}")
-    return body or '', mime
 
 @app.route('/scan-emails', methods=['POST'])
 def scan_emails():
