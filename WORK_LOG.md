@@ -19,10 +19,12 @@
 
 - Reduced chat log text size to 75% for compact bubbles.
 - Documented new test scenario for smaller chat text.
-<<<<<<< codex/update-chat-window-ui-behavior
+- Added backend support for saving scan prompt to last_prompt.json.
+- Added endpoint /last-prompt and frontend hook to load it on start.
+- Updated PROJECT_BACKLOG with persistent prompt user story.
+- Fixed prompt loading by proxying /last-prompt through Vite config.
 - Hid system prompts and stripped <RESULT> tags in chat log.
 - Added new user story for clean chat display.
-=======
 - Adjusted confirm endpoint to label spam using `shopify-spam` and remove `INBOX` label.
 - Updated README and added user story for confirmation workflow.
->>>>>>> main
+

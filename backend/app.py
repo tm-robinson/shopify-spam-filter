@@ -24,6 +24,8 @@ logger.setLevel(logging.INFO)
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
 OPENROUTER_KEY_FILE = os.path.join(os.path.dirname(__file__), "openrouter.key")
+# CODEX: Added constant for storing last used prompt
+PROMPT_FILE = os.path.join(os.path.dirname(__file__), "last_prompt.json")
 
 # in-memory store for background scan tasks
 tasks = {}
@@ -90,6 +92,12 @@ def save_openrouter_key():
     return ("", 204)
 
 
+@app.route("/last-prompt")
+def last_prompt():
+    """Return the most recently used prompt"""
+    return jsonify({"prompt": load_last_prompt()})
+
+
 def get_credentials():
     if not os.path.exists(TOKEN_FILE):
         return None
@@ -104,6 +112,26 @@ def get_credentials():
     except Exception as e:
         logger.error("Failed to load credentials: %s", e)
         return None
+
+
+# CODEX: Persist last used prompt between sessions
+def load_last_prompt():
+    if os.path.exists(PROMPT_FILE):
+        try:
+            with open(PROMPT_FILE) as f:
+                data = json.load(f)
+                return data.get("prompt", "")
+        except Exception as e:
+            logger.error("Failed to load prompt: %s", e)
+    return ""
+
+
+def save_last_prompt(prompt: str) -> None:
+    try:
+        with open(PROMPT_FILE, "w") as f:
+            json.dump({"prompt": prompt}, f)
+    except Exception as e:
+        logger.error("Failed to save prompt: %s", e)
 
 
 def get_label_id(service, name):
@@ -170,6 +198,8 @@ def scan_emails():
 
     data = request.get_json() or {}
     prompt = data.get("prompt", "Describe what emails to identify")
+    # CODEX: Save the prompt for future sessions
+    save_last_prompt(prompt)
     days = int(data.get("days", 10))
 
     task_id = str(uuid.uuid4())

@@ -64,6 +64,15 @@
 - Email list rows have coloured backgrounds matching their status. (TODO)
 - Chat log uses smaller font size for compact display. (TODO)
 
+#### User Story: Persist last used scan prompt (DONE)
+
+**Description:** As a user, I want the application to remember the last prompt I used when scanning emails so that it is pre-filled the next time I open the app.
+
+**Test Scenarios:**
+
+- Save the prompt on the backend when scanning emails. (TODO)
+- Retrieve the saved prompt from the backend and display it in the textarea on load. (TODO)
+
 #### User Story: Clean chat log display (TODO)
 
 **Description:** As a user, I want the chat log to hide system prompts and strip
@@ -73,3 +82,4 @@ result tags from assistant replies so that the conversation is easier to read.
 
 - System messages are not displayed in the chat log. (TODO)
 - <RESULT> tags are removed from assistant replies. (TODO)
+
