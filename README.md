@@ -38,4 +38,4 @@ This project contains a simple Flask backend and React frontend to scan your Gma
 
 To create a production build of the frontend, run `npm run build` inside `frontend/` and serve the generated `dist` directory.
 
-Spam results are stored using the `shopify-spam` label in Gmail. Confirming choices will block senders and mark messages as spam in Gmail.
+Spam results are stored using the `shopify-spam` label in Gmail. Confirming choices will label messages as `shopify-spam` and remove them from the inbox.
