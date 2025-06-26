@@ -11,6 +11,7 @@ import uuid
 import base64
 from bs4 import BeautifulSoup
 import re
+import time
 
 from dotenv import load_dotenv
 
@@ -176,14 +177,14 @@ def extract_email_body(payload):
     html_part = next((t for t, m in parts if m == "text/html"), None)
     if html_part:
         body = html_to_plain_text(html_part)
-        logger.info(f"body is html: {body}")
+        logger.debug(f"body is html: {body}")
         return body, "text/html"
 
     text_part = next((t for t, m in parts if m == "text/plain"), None)
     if text_part:
         text_part = re.sub(r"https?://\S+", "", text_part)
         text_part = re.sub(r"\s+", " ", text_part).strip()
-        logger.info(f"body is plaintext: {text_part}")
+        logger.debug(f"body is plaintext: {text_part}")
         return text_part, "text/plain"
 
     return "", ""
@@ -340,6 +341,9 @@ def scan_emails():
                     status = "ignore"
                 elif whitelist_label in label_ids or sender in whitelist:
                     status = "whitelist"
+                elif spam_label in label_ids:
+                    # dont reprocess emails that were previously labelled as spam
+                    status = "spam"
                 else:
                     if openrouter_key:
                         data = {
@@ -363,16 +367,21 @@ def scan_emails():
                         }
                         headers_req = {"Authorization": f"Bearer {openrouter_key}"}
                         try:
-                            logger.info("OpenRouter request: %s", data)
+                            logger.debug("OpenRouter request: %s", data)
+                            start_time = time.time()
                             resp = requests.post(
                                 "https://openrouter.ai/api/v1/" "chat/completions",
                                 json=data,
                                 headers=headers_req,
                             )
-                            logger.info(
+                            logger.debug(
                                 "OpenRouter response %s: %s",
                                 resp.status_code,
                                 resp.text,
+                            )
+                            logger.info(
+                                "OpenRouter response %s received %d characters after %.2f seconds",
+                                resp.status_code, len(resp.text), time.time() - start_time,
                             )
                             if resp.status_code == 200:
                                 answer = resp.json()["choices"][0]["message"]["content"]
