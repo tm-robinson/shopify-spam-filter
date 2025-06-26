@@ -45,6 +45,15 @@
 - Mark an email as ignore and verify the "spam-filter-ignore" label is added. (TODO)
 - New emails from the ignored sender are automatically marked as ignored. (TODO)
 
+#### User Story: Confirm spam emails without SPAM label (DONE)
+
+**Description:** As a user, I want confirming spam emails to label them `shopify-spam` and remove them from the inbox because Gmail's API does not allow adding the `SPAM` label directly.
+
+**Test Scenarios:**
+
+- Confirming a spam email adds the `shopify-spam` label and removes the `INBOX` label. (TODO)
+- A filter is created to automatically label future emails from the sender with `shopify-spam`. (TODO)
+
 #### User Story: Improved UI styling (TODO)
 
 **Description:** As a user, I want chat messages shown as speech bubbles with expandable content and color-coded results, and email rows highlighted based on status for easier review.
