@@ -22,3 +22,4 @@
 - Added backend support for saving scan prompt to last_prompt.json.
 - Added endpoint /last-prompt and frontend hook to load it on start.
 - Updated PROJECT_BACKLOG with persistent prompt user story.
+- Fixed prompt loading by proxying /last-prompt through Vite config.

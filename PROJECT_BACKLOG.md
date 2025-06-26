@@ -61,5 +61,5 @@
 
 **Test Scenarios:**
 
-- Save the prompt to local storage when scanning emails. (TODO)
-- Retrieve the saved prompt and display it in the textarea on load. (TODO)
+- Save the prompt on the backend when scanning emails. (TODO)
+- Retrieve the saved prompt from the backend and display it in the textarea on load. (TODO)
