@@ -19,5 +19,10 @@
 
 - Reduced chat log text size to 75% for compact bubbles.
 - Documented new test scenario for smaller chat text.
+<<<<<<< codex/update-chat-window-ui-behavior
+- Hid system prompts and stripped <RESULT> tags in chat log.
+- Added new user story for clean chat display.
+=======
 - Adjusted confirm endpoint to label spam using `shopify-spam` and remove `INBOX` label.
 - Updated README and added user story for confirmation workflow.
+>>>>>>> main
