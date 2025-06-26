@@ -517,6 +517,7 @@ def confirm():
         return jsonify({"error": "Not authenticated"}), 401
     service = build("gmail", "v1", credentials=creds)
     logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
+    spam_label = get_label_id(service, "shopify-spam")
     ids = request.json.get("ids", [])
     for msg_id in ids:
         logger.debug("Gmail request: get message %s for confirmation", msg_id)
@@ -546,12 +547,17 @@ def confirm():
             userId="me",
             body={
                 "criteria": {"from": sender},
-                "action": {"addLabelIds": ["SPAM"], "removeLabelIds": []},
+                "action": {
+                    "addLabelIds": [spam_label],
+                    "removeLabelIds": ["INBOX"],
+                },
             },
         ).execute()
-        logger.debug("Gmail request: add SPAM label to %s", msg_id)
+        logger.debug("Gmail request: label %s as shopify-spam", msg_id)
         service.users().messages().modify(
-            userId="me", id=msg_id, body={"addLabelIds": ["SPAM"]}
+            userId="me",
+            id=msg_id,
+            body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
         ).execute()
     return ("", 204)
 
