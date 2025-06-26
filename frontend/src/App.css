@@ -22,6 +22,7 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  font-size: 0.75em; /* CODEX: reduce chat text size */
 }
 table {
   width: 100%;

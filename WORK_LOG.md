@@ -14,3 +14,8 @@
 - Implemented chat bubbles with expandable text and colour-coded results.
 - Styled email list rows based on status.
 - Added new UI styling user story to PROJECT_BACKLOG.
+
+## 26th June 2025
+
+- Reduced chat log text size to 75% for compact bubbles.
+- Documented new test scenario for smaller chat text.

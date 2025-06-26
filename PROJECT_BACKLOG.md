@@ -53,3 +53,4 @@
 - Chat bubbles truncate long text with a "read more" link. (TODO)
 - Assistant replies show red background for YES and green background for NO. (TODO)
 - Email list rows have coloured backgrounds matching their status. (TODO)
+- Chat log uses smaller font size for compact display. (TODO)
