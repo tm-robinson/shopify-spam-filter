@@ -20,6 +20,8 @@ body {
   background: #fff;
   padding: 10px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 table {
   width: 100%;
@@ -30,6 +32,26 @@ th,
 td {
   padding: 8px;
   border-bottom: 1px solid #ddd;
+}
+
+tr.status-whitelist {
+  background: #ffffff;
+  color: #000000;
+}
+
+tr.status-ignore {
+  background: #e0e0e0;
+  color: #555555;
+}
+
+tr.status-spam {
+  background: #ff6666;
+  color: #ffffff;
+}
+
+tr.status-not_spam {
+  background: #66ff66;
+  color: #000000;
 }
 button {
   margin-right: 5px;
@@ -59,4 +81,37 @@ button.ignore.active {
 .chat-assistant {
   color: #555;
   margin-bottom: 5px;
+}
+
+/* CODEX: Added styles for chat bubbles */
+.chat-bubble {
+  max-width: 90%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.chat-bubble.left {
+  align-self: flex-start;
+  background: #f0f0f0;
+}
+
+.chat-bubble.right {
+  align-self: flex-end;
+  background: #f0f0f0;
+}
+
+.chat-bubble.yes {
+  background: #ffdddd;
+}
+
+.chat-bubble.no {
+  background: #ddffdd;
+}
+
+.read-more {
+  color: blue;
+  cursor: pointer;
+  margin-left: 5px;
 }
