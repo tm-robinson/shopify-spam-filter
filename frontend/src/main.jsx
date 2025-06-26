@@ -2,6 +2,36 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./App.css";
 
+function ChatBubble({ role, content }) {
+  const [expanded, setExpanded] = useState(false);
+  const sentences = content.split(/(?<=[.!?])\s+/);
+  const preview = sentences.slice(0, 3).join(" ");
+  const isLong = sentences.length > 3;
+  const display = expanded || !isLong ? content : preview;
+
+  let extraClass = "";
+  if (role === "assistant") {
+    if (content.toLowerCase().includes("<result>yes")) {
+      extraClass = " yes";
+    } else if (content.toLowerCase().includes("<result>no")) {
+      extraClass = " no";
+    }
+  }
+
+  return (
+    <div
+      className={`chat-bubble ${role === "assistant" ? "right" : "left"}${extraClass}`}
+    >
+      {display}
+      {isLong && (
+        <span className="read-more" onClick={() => setExpanded(!expanded)}>
+          {expanded ? " Read less" : " ... Read more"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [apiKey, setApiKey] = useState("");
   const [prompt, setPrompt] = useState(
@@ -134,7 +164,7 @@ function App() {
           </thead>
           <tbody>
             {emails.map((e) => (
-              <tr key={e.id}>
+              <tr key={e.id} className={`status-${e.status}`}>
                 <td>{e.sender}</td>
                 <td>{e.subject}</td>
                 <td>{e.date}</td>
@@ -172,9 +202,7 @@ function App() {
       </div>
       <div className="chat-log">
         {chatLog.map((c, i) => (
-          <div key={i} className={`chat-${c.role}`}>
-            {c.role}: {c.content}
-          </div>
+          <ChatBubble key={i} role={c.role} content={c.content} />
         ))}
       </div>
     </div>
