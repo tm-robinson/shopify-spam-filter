@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./App.css";
 
+const DEFAULT_PROMPT =
+  "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.";
+
 function ChatBubble({ role, content }) {
   const [expanded, setExpanded] = useState(false);
   const sentences = content.split(/(?<=[.!?])\s+/);
@@ -34,14 +37,23 @@ function ChatBubble({ role, content }) {
 
 function App() {
   const [apiKey, setApiKey] = useState("");
-  const [prompt, setPrompt] = useState(
-    "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.",
-  );
+  const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
   const [chatLog, setChatLog] = useState([]);
   const [days, setDays] = useState(10);
   const [task, setTask] = useState(null);
   const [pollInterval, setPollInterval] = useState(1); // seconds
+
+  useEffect(() => {
+    fetch("/last-prompt")
+      .then((r) => r.json())
+      .then((d) => {
+        setPrompt(d.prompt || DEFAULT_PROMPT);
+      })
+      .catch(() => {
+        setPrompt(DEFAULT_PROMPT);
+      });
+  }, []);
 
   const linkGmail = () => {
     window.location.href = "/auth";

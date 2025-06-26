@@ -19,3 +19,6 @@
 
 - Reduced chat log text size to 75% for compact bubbles.
 - Documented new test scenario for smaller chat text.
+- Added backend support for saving scan prompt to last_prompt.json.
+- Added endpoint /last-prompt and frontend hook to load it on start.
+- Updated PROJECT_BACKLOG with persistent prompt user story.

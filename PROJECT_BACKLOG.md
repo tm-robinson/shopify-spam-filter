@@ -54,3 +54,12 @@
 - Assistant replies show red background for YES and green background for NO. (TODO)
 - Email list rows have coloured backgrounds matching their status. (TODO)
 - Chat log uses smaller font size for compact display. (TODO)
+
+#### User Story: Persist last used scan prompt (DONE)
+
+**Description:** As a user, I want the application to remember the last prompt I used when scanning emails so that it is pre-filled the next time I open the app.
+
+**Test Scenarios:**
+
+- Save the prompt to local storage when scanning emails. (TODO)
+- Retrieve the saved prompt and display it in the textarea on load. (TODO)
