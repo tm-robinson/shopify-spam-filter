@@ -297,8 +297,10 @@ def scan_emails():
 
             results = service.users().messages().list(userId="me", q=query).execute()
             logger.debug("Gmail response: %s", results)
+            logger.info("Retrieved %d messages from gmail", results.get("resultSizeEstimate", 0))
             messages = results.get("messages", [])
             tasks[task_id]["total"] = len(messages)
+            logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = ""
             if os.path.exists(OPENROUTER_KEY_FILE):
                 with open(OPENROUTER_KEY_FILE) as f:
