@@ -3,11 +3,12 @@ import ReactDOM from "react-dom/client";
 import "./App.css";
 
 function ChatBubble({ role, content }) {
+  const clean = content.replace(/<\/?RESULT>/gi, "");
   const [expanded, setExpanded] = useState(false);
-  const sentences = content.split(/(?<=[.!?])\s+/);
+  const sentences = clean.split(/(?<=[.!?])\s+/);
   const preview = sentences.slice(0, 3).join(" ");
   const isLong = sentences.length > 3;
-  const display = expanded || !isLong ? content : preview;
+  const display = expanded || !isLong ? clean : preview;
 
   let extraClass = "";
   if (role === "assistant") {
@@ -201,9 +202,11 @@ function App() {
         <button onClick={confirm}>Confirm Choices</button>
       </div>
       <div className="chat-log">
-        {chatLog.map((c, i) => (
-          <ChatBubble key={i} role={c.role} content={c.content} />
-        ))}
+        {chatLog
+          .filter((c) => c.role !== "system")
+          .map((c, i) => (
+            <ChatBubble key={i} role={c.role} content={c.content} />
+          ))}
       </div>
     </div>
   );
