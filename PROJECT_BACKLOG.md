@@ -83,3 +83,12 @@ result tags from assistant replies so that the conversation is easier to read.
 - System messages are not displayed in the chat log. (TODO)
 - <RESULT> tags are removed from assistant replies. (TODO)
 
+#### User Story: Retrieve all Gmail messages (DONE)
+
+**Description:** As a user, I want the application to fetch all matching Gmail messages using pagination so that no results are missed.
+
+**Test Scenarios:**
+
+- More than 100 results are returned when querying messages and all are processed. (TODO)
+- Whitelist and ignore lists are fully retrieved across pages. (TODO)
+

@@ -28,3 +28,6 @@
 - Adjusted confirm endpoint to label spam using `shopify-spam` and remove `INBOX` label.
 - Updated README and added user story for confirmation workflow.
 
+- Refactored Gmail listing to handle pagination with list_all_messages helper.
+- Added pagination user story to PROJECT_BACKLOG.
+
