@@ -146,12 +146,13 @@ def get_label_id(service, name):
 
 
 # CODEX: Added helper to fetch all messages across pages
-def list_all_messages(service, user_id="me", **kwargs):
+def list_all_messages(service, user_id="me", q=None):
     """Return all messages for the given query handling pagination."""
     messages = []
     page_token = None
+    logger.info(f"Fetching messages from gmail for query {q}")
     while True:
-        params = {"userId": user_id, **kwargs}
+        params = {"userId": user_id, "q": q}
         if page_token:
             params["pageToken"] = page_token
         logger.debug("Gmail request: list messages %s", params)
@@ -161,6 +162,7 @@ def list_all_messages(service, user_id="me", **kwargs):
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
+    logger.info("Retrieved %d messages from gmail", len(messages))
     return messages
 
 
@@ -301,7 +303,7 @@ def scan_emails():
             query = f"after:{days}d"
 
             messages = list_all_messages(service, q=query)
-            logger.info("Retrieved %d messages from gmail", len(messages))
+            
             tasks[task_id]["total"] = len(messages)
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = ""
