@@ -10,6 +10,7 @@ import threading
 import uuid
 import base64
 from bs4 import BeautifulSoup
+import datetime
 import re
 import time
 
@@ -145,6 +146,27 @@ def get_label_id(service, name):
     return label["id"]
 
 
+# CODEX: Added helper to fetch all messages across pages
+def list_all_messages(service, user_id="me", q=None):
+    """Return all messages for the given query handling pagination."""
+    messages = []
+    page_token = None
+    logger.info(f"Fetching messages from gmail for query {q}")
+    while True:
+        params = {"userId": user_id, "q": q}
+        if page_token:
+            params["pageToken"] = page_token
+        logger.debug("Gmail request: list messages %s", params)
+        resp = service.users().messages().list(**params).execute()
+        logger.debug("Gmail response: %s", resp)
+        messages.extend(resp.get("messages", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    logger.info("Retrieved %d messages from gmail", len(messages))
+    return messages
+
+
 # Recursively extract the text or html body from a message payload.
 def extract_email_body(payload):
     """Return decoded plain text body prioritising HTML."""
@@ -202,6 +224,7 @@ def scan_emails():
     # CODEX: Save the prompt for future sessions
     save_last_prompt(prompt)
     days = int(data.get("days", 10))
+    date_after = datetime.datetime.now() - datetime.timedelta(days=days)
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
@@ -223,15 +246,8 @@ def scan_emails():
             ignore_label = get_label_id(service, "spam-filter-ignore")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
-            result = (
-                service.users()
-                .messages()
-                .list(userId="me", q="label:whitelist")
-                .execute()
-            )
-            logger.debug("Gmail response: %s", result)
-            if result.get("resultSizeEstimate", 1) != 0:
-                wmsgs = result.get("messages", [])
+            wmsgs = list_all_messages(service, q="label:whitelist")
+            if wmsgs:
                 for idx, m in enumerate(wmsgs):
                     logger.debug("Gmail request: get message %s for whitelist", m["id"])
                     md = (
@@ -258,15 +274,8 @@ def scan_emails():
 
             # gather ignored senders
             logger.debug("Gmail request: list ignore emails")
-            result = (
-                service.users()
-                .messages()
-                .list(userId="me", q="label:spam-filter-ignore")
-                .execute()
-            )
-            logger.debug("Gmail response: %s", result)
-            if result.get("resultSizeEstimate", 1) != 0:
-                imsgs = result.get("messages", [])
+            imsgs = list_all_messages(service, q="label:spam-filter-ignore")
+            if imsgs:
                 for idx, m in enumerate(imsgs):
                     logger.debug("Gmail request: get message %s for ignore", m["id"])
                     md = (
@@ -293,12 +302,11 @@ def scan_emails():
 
             tasks[task_id]["stage"] = "fetching"
 
-            query = f"after:{days}d"
+            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
 
-            results = service.users().messages().list(userId="me", q=query).execute()
-            logger.debug("Gmail response: %s", results)
-            logger.info("Retrieved %d messages from gmail", results.get("resultSizeEstimate", 0))
-            messages = results.get("messages", [])
+
+            messages = list_all_messages(service, q=query)
+            
             tasks[task_id]["total"] = len(messages)
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = ""
@@ -383,7 +391,9 @@ def scan_emails():
                             )
                             logger.info(
                                 "OpenRouter response %s received %d characters after %.2f seconds",
-                                resp.status_code, len(resp.text), time.time() - start_time,
+                                resp.status_code,
+                                len(resp.text),
+                                time.time() - start_time,
                             )
                             if resp.status_code == 200:
                                 answer = resp.json()["choices"][0]["message"]["content"]
