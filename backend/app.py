@@ -10,6 +10,7 @@ import threading
 import uuid
 import base64
 from bs4 import BeautifulSoup
+import datetime
 import re
 import time
 
@@ -223,6 +224,7 @@ def scan_emails():
     # CODEX: Save the prompt for future sessions
     save_last_prompt(prompt)
     days = int(data.get("days", 10))
+    date_after = datetime.datetime.now() - datetime.timedelta(days=days)
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
@@ -300,7 +302,8 @@ def scan_emails():
 
             tasks[task_id]["stage"] = "fetching"
 
-            query = f"after:{days}d"
+            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
+
 
             messages = list_all_messages(service, q=query)
             
