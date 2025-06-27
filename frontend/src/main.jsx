@@ -54,6 +54,20 @@ function App() {
       .catch(() => {
         setPrompt(DEFAULT_PROMPT);
       });
+
+    // CODEX: Check for any running tasks when the page loads
+    fetch("/scan-tasks")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.tasks && d.tasks.length > 0) {
+          const t = d.tasks[0];
+          setTask({ id: t.id, ...t });
+          setEmails(t.emails || []);
+          setChatLog(t.log || []);
+          setPollInterval(1);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const linkGmail = () => {

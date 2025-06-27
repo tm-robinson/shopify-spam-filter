@@ -304,9 +304,8 @@ def scan_emails():
 
             query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
 
-
             messages = list_all_messages(service, q=query)
-            
+
             tasks[task_id]["total"] = len(messages)
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = ""
@@ -475,6 +474,17 @@ def scan_status(task_id):
     if not task:
         return jsonify({"error": "not found"}), 404
     return jsonify(task)
+
+
+# CODEX: Endpoint to list active scan tasks
+@app.route("/scan-tasks")
+def scan_tasks():
+    active = [
+        {"id": tid, **info}
+        for tid, info in tasks.items()
+        if info.get("stage") != "done"
+    ]
+    return jsonify({"tasks": active})
 
 
 @app.route("/update-status", methods=["POST"])
