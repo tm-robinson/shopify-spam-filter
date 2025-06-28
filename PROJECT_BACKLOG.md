@@ -117,3 +117,13 @@ result tags from assistant replies so that the conversation is easier to read.
 
 - Changing an email status while a scan is running persists when the task status is fetched. (TODO)
 
+
+#### User Story: Detailed scan progress (TODO)
+
+**Description:** As a user, I want to see progress while the whitelist and ignore lists are fetched so I know the scan is still running.
+
+**Test Scenarios:**
+
+- Progress text updates while fetching whitelist emails. (TODO)
+- Progress text updates while fetching ignore emails. (TODO)
+- Confirm button shows a "confirming" state until the server responds. (TODO)

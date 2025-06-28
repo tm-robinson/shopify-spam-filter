@@ -256,9 +256,14 @@ def scan_emails():
             ignore_label = get_label_id(service, "spam-filter-ignore")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
+            tasks[task_id]["stage"] = "listing whitelist emails"
             wmsgs = list_all_messages(service, q="label:whitelist")
+            tasks[task_id]["stage"] = "fetching whitelist emails"
+            tasks[task_id]["progress"] = 0
+            tasks[task_id]["total"] = len(wmsgs)
             if wmsgs:
                 for idx, m in enumerate(wmsgs):
+                    tasks[task_id]["progress"] = idx + 1
                     logger.debug("Gmail request: get message %s for whitelist", m["id"])
                     md = (
                         service.users()
@@ -284,9 +289,14 @@ def scan_emails():
 
             # gather ignored senders
             logger.debug("Gmail request: list ignore emails")
+            tasks[task_id]["stage"] = "listing ignore emails"
             imsgs = list_all_messages(service, q="label:spam-filter-ignore")
+            tasks[task_id]["stage"] = "fetching ignore emails"
+            tasks[task_id]["progress"] = 0
+            tasks[task_id]["total"] = len(imsgs)
             if imsgs:
                 for idx, m in enumerate(imsgs):
+                    tasks[task_id]["progress"] = idx + 1
                     logger.debug("Gmail request: get message %s for ignore", m["id"])
                     md = (
                         service.users()
@@ -606,6 +616,7 @@ def confirm():
             update_task_email_status(msg_id, "spam")
         except Exception:
             import traceback
+
             logger.error(traceback.format_exc())
     if task_id and task_id in tasks:
         # CODEX: Remove task so it no longer appears in active list
