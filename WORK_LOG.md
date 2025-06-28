@@ -45,3 +45,10 @@
 - Updated `/update-status` and `/confirm` endpoints to modify running task data.
 - Documented new user story about persisting status updates in PROJECT_BACKLOG.
 
+## 29th June 2025
+
+- Changed scan task lifecycle so completed results remain active until confirmed.
+- `/scan-tasks` now returns finished tasks and confirm request closes them.
+- Frontend sends task id on confirmation and clears task state.
+- Added new user story for keeping completed results visible.
+

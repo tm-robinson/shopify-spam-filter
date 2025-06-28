@@ -492,7 +492,7 @@ def scan_tasks():
     active = [
         {"id": tid, **info}
         for tid, info in tasks.items()
-        if info.get("stage") != "done"
+        if info.get("stage") != "closed"
     ]
     return jsonify({"tasks": active})
 
@@ -561,6 +561,7 @@ def confirm():
     logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     spam_label = get_label_id(service, "shopify-spam")
     ids = request.json.get("ids", [])
+    task_id = request.json.get("task_id")
     for msg_id in ids:
         logger.debug("Gmail request: get message %s for confirmation", msg_id)
         msg = (
@@ -602,6 +603,9 @@ def confirm():
             body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
         ).execute()
         update_task_email_status(msg_id, "spam")
+    if task_id and task_id in tasks:
+        # CODEX: Mark task closed after user confirmation
+        tasks[task_id]["stage"] = "closed"
     return ("", 204)
 
 

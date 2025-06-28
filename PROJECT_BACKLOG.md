@@ -100,6 +100,14 @@ result tags from assistant replies so that the conversation is easier to read.
 
 - Reloading the page during a scan resumes polling and shows current progress. (TODO)
 
+#### User Story: Keep results after scan completes (TODO)
+
+**Description:** As a user, I want completed scan tasks to remain visible until I confirm my choices so that I can review the emails even after reloading the page.
+
+**Test Scenarios:**
+
+- Reloading the page after a scan finishes still shows the results until I click confirm. (TODO)
+
 #### User Story: Persist manual status updates during scans (DONE)
 
 **Description:** As a user, I want any status changes I make while a scan is running to remain saved so that the emails do not revert on the next refresh.
