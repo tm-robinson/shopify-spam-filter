@@ -51,4 +51,6 @@
 - `/scan-tasks` now returns finished tasks and confirm request closes them.
 - Frontend sends task id on confirmation and clears task state.
 - Added new user story for keeping completed results visible.
+- Closed tasks are removed from server memory once confirmed.
+- Confirm action now clears email list in the UI.
 

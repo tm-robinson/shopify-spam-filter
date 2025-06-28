@@ -604,8 +604,8 @@ def confirm():
         ).execute()
         update_task_email_status(msg_id, "spam")
     if task_id and task_id in tasks:
-        # CODEX: Mark task closed after user confirmation
-        tasks[task_id]["stage"] = "closed"
+        # CODEX: Remove task so it no longer appears in active list
+        tasks.pop(task_id, None)
     return ("", 204)
 
 

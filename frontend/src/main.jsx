@@ -131,6 +131,7 @@ function App() {
     }).then(() => {
       // CODEX: Clear task data once confirmation closes it
       setTask(null);
+      setEmails([]);
     });
   };
 

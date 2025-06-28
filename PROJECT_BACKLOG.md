@@ -107,6 +107,7 @@ result tags from assistant replies so that the conversation is easier to read.
 **Test Scenarios:**
 
 - Reloading the page after a scan finishes still shows the results until I click confirm. (TODO)
+- Closed tasks are not returned when fetching active tasks. (TODO)
 
 #### User Story: Persist manual status updates during scans (DONE)
 
