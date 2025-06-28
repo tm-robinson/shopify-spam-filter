@@ -100,3 +100,11 @@ result tags from assistant replies so that the conversation is easier to read.
 
 - Reloading the page during a scan resumes polling and shows current progress. (TODO)
 
+#### User Story: Persist manual status updates during scans (DONE)
+
+**Description:** As a user, I want any status changes I make while a scan is running to remain saved so that the emails do not revert on the next refresh.
+
+**Test Scenarios:**
+
+- Changing an email status while a scan is running persists when the task status is fetched. (TODO)
+

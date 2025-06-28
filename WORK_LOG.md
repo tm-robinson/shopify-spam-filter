@@ -38,3 +38,10 @@
 - Proxied new endpoint through Vite config.
 - Documented new user story for resuming tasks in PROJECT_BACKLOG.
 
+## 28th June 2025
+
+- Fixed issue where email status changes during a running scan were lost on refresh.
+- Added `update_task_email_status` helper to persist manual updates.
+- Updated `/update-status` and `/confirm` endpoints to modify running task data.
+- Documented new user story about persisting status updates in PROJECT_BACKLOG.
+
