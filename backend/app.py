@@ -32,6 +32,16 @@ PROMPT_FILE = os.path.join(os.path.dirname(__file__), "last_prompt.json")
 # in-memory store for background scan tasks
 tasks = {}
 
+
+def update_task_email_status(msg_id: str, status: str) -> None:
+    """Update status of a message within any running scan task."""
+    for info in tasks.values():
+        for email in info.get("emails", []):
+            if email.get("id") == msg_id:
+                # CODEX: Persist manual status updates during a scan
+                email["status"] = status
+
+
 # Google OAuth client credentials
 CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
@@ -538,6 +548,7 @@ def update_status():
             id=msg_id,
             body={"removeLabelIds": [spam_label, whitelist_label, ignore_label]},
         ).execute()
+    update_task_email_status(msg_id, status)
     return ("", 204)
 
 
@@ -590,6 +601,7 @@ def confirm():
             id=msg_id,
             body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
         ).execute()
+        update_task_email_status(msg_id, "spam")
     return ("", 204)
 
 
