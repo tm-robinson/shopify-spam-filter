@@ -585,24 +585,28 @@ def confirm():
             "",
         )
         # Add to block list
-        logger.debug("Gmail request: create filter for %s", sender)
-        service.users().settings().filters().create(
-            userId="me",
-            body={
-                "criteria": {"from": sender},
-                "action": {
-                    "addLabelIds": [spam_label],
-                    "removeLabelIds": ["INBOX"],
+        try:
+            logger.debug("Gmail request: create filter for %s", sender)
+            service.users().settings().filters().create(
+                userId="me",
+                body={
+                    "criteria": {"from": sender},
+                    "action": {
+                        "addLabelIds": [spam_label],
+                        "removeLabelIds": ["INBOX"],
+                    },
                 },
-            },
-        ).execute()
-        logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-        service.users().messages().modify(
-            userId="me",
-            id=msg_id,
-            body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
-        ).execute()
-        update_task_email_status(msg_id, "spam")
+            ).execute()
+            logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+            service.users().messages().modify(
+                userId="me",
+                id=msg_id,
+                body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
+            ).execute()
+            update_task_email_status(msg_id, "spam")
+        except Exception:
+            import traceback
+            logger.error(traceback.format_exc())
     if task_id and task_id in tasks:
         # CODEX: Remove task so it no longer appears in active list
         tasks.pop(task_id, None)
