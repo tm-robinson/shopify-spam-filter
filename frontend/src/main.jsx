@@ -44,6 +44,7 @@ function App() {
   const [days, setDays] = useState(10);
   const [task, setTask] = useState(null);
   const [pollInterval, setPollInterval] = useState(1); // seconds
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     fetch("/last-prompt")
@@ -124,15 +125,20 @@ function App() {
 
   const confirm = () => {
     const ids = emails.filter((e) => e.status === "spam").map((e) => e.id);
+    setConfirming(true);
     fetch("/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids, task_id: task?.id }),
-    }).then(() => {
-      // CODEX: Clear task data once confirmation closes it
-      setTask(null);
-      setEmails([]);
-    });
+    })
+      .then(() => {
+        // CODEX: Clear task data once confirmation closes it
+        setTask(null);
+        setEmails([]);
+      })
+      .finally(() => {
+        setConfirming(false);
+      });
   };
 
   return (
@@ -179,7 +185,7 @@ function App() {
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>
-              {task.stage} {task.progress}/{task.total}
+              {task.stage} ({task.progress}/{task.total})
             </div>
             <progress value={task.progress} max={task.total || 1}></progress>
           </div>
@@ -229,7 +235,9 @@ function App() {
             ))}
           </tbody>
         </table>
-        <button onClick={confirm}>Confirm Choices</button>
+        <button onClick={confirm} disabled={confirming}>
+          {confirming ? "Confirming..." : "Confirm Choices"}
+        </button>
       </div>
       <div className="chat-log">
         {chatLog

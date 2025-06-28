@@ -54,3 +54,5 @@
 - Closed tasks are removed from server memory once confirmed.
 - Confirm action now clears email list in the UI.
 
+- Display progress while fetching whitelist and ignore lists.
+- Confirm button disables and shows progress during API call.
