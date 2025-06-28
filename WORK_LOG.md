@@ -31,3 +31,10 @@
 - Refactored Gmail listing to handle pagination with list_all_messages helper.
 - Added pagination user story to PROJECT_BACKLOG.
 
+## 27th June 2025
+
+- Added backend endpoint `/scan-tasks` to list running scan tasks.
+- Frontend now checks for active tasks on load and resumes polling every second.
+- Proxied new endpoint through Vite config.
+- Documented new user story for resuming tasks in PROJECT_BACKLOG.
+

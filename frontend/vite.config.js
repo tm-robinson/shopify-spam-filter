@@ -41,6 +41,12 @@ export default defineConfig({
         secure: false,
         agent: httpsAgent,
       },
+      "/scan-tasks": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
       "/update-status": {
         target: backend,
         changeOrigin: true,
