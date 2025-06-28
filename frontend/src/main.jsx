@@ -127,7 +127,11 @@ function App() {
     fetch("/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify({ ids, task_id: task?.id }),
+    }).then(() => {
+      // CODEX: Clear task data once confirmation closes it
+      setTask(null);
+      setEmails([]);
     });
   };
 

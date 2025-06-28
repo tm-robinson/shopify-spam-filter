@@ -492,7 +492,7 @@ def scan_tasks():
     active = [
         {"id": tid, **info}
         for tid, info in tasks.items()
-        if info.get("stage") != "done"
+        if info.get("stage") != "closed"
     ]
     return jsonify({"tasks": active})
 
@@ -561,6 +561,7 @@ def confirm():
     logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     spam_label = get_label_id(service, "shopify-spam")
     ids = request.json.get("ids", [])
+    task_id = request.json.get("task_id")
     for msg_id in ids:
         logger.debug("Gmail request: get message %s for confirmation", msg_id)
         msg = (
@@ -584,24 +585,31 @@ def confirm():
             "",
         )
         # Add to block list
-        logger.debug("Gmail request: create filter for %s", sender)
-        service.users().settings().filters().create(
-            userId="me",
-            body={
-                "criteria": {"from": sender},
-                "action": {
-                    "addLabelIds": [spam_label],
-                    "removeLabelIds": ["INBOX"],
+        try:
+            logger.debug("Gmail request: create filter for %s", sender)
+            service.users().settings().filters().create(
+                userId="me",
+                body={
+                    "criteria": {"from": sender},
+                    "action": {
+                        "addLabelIds": [spam_label],
+                        "removeLabelIds": ["INBOX"],
+                    },
                 },
-            },
-        ).execute()
-        logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-        service.users().messages().modify(
-            userId="me",
-            id=msg_id,
-            body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
-        ).execute()
-        update_task_email_status(msg_id, "spam")
+            ).execute()
+            logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+            service.users().messages().modify(
+                userId="me",
+                id=msg_id,
+                body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
+            ).execute()
+            update_task_email_status(msg_id, "spam")
+        except Exception:
+            import traceback
+            logger.error(traceback.format_exc())
+    if task_id and task_id in tasks:
+        # CODEX: Remove task so it no longer appears in active list
+        tasks.pop(task_id, None)
     return ("", 204)
 
 
