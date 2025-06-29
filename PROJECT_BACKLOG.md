@@ -54,15 +54,15 @@
 - Confirming a spam email adds the `shopify-spam` label and removes the `INBOX` label. (TODO)
 - A filter is created to automatically label future emails from the sender with `shopify-spam`. (TODO)
 
-#### User Story: Improved UI styling (TODO)
+#### User Story: Improved UI styling (DONE)
 
-**Description:** As a user, I want chat messages shown as speech bubbles with expandable content and color-coded results, and email rows highlighted based on status for easier review.
+**Description:** As a user, I want a modern, mobile friendly interface with fixed controls at the top, circular action buttons and expandable LLM details for each email.
 **Test Scenarios:**
 
-- Chat bubbles truncate long text with a "read more" link. (TODO)
-- Assistant replies show red background for YES and green background for NO. (TODO)
-- Email list rows have coloured backgrounds matching their status. (TODO)
-- Chat log uses smaller font size for compact display. (TODO)
+- Confirm button is fixed at the top with other controls. (TODO)
+- Email list scrolls beneath the header on mobile screens. (TODO)
+- "i" buttons toggle the LLM request and response for each email. (TODO)
+- Action buttons use circular icons and keep their colours. (TODO)
 
 #### User Story: Persist last used scan prompt (DONE)
 

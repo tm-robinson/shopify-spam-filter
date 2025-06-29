@@ -5,34 +5,59 @@ import "./App.css";
 const DEFAULT_PROMPT =
   "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.";
 
-function ChatBubble({ role, content }) {
-  const clean = content.replace(/<\/?RESULT>/gi, "");
-  const [expanded, setExpanded] = useState(false);
-  const sentences = clean.split(/(?<=[.!?])\s+/);
-  const preview = sentences.slice(0, 3).join(" ");
-  const isLong = sentences.length > 3;
-  const display = expanded || !isLong ? clean : preview;
-
-  let extraClass = "";
-  if (role === "assistant") {
-    if (content.toLowerCase().includes("<result>yes")) {
-      extraClass = " yes";
-    } else if (content.toLowerCase().includes("<result>no")) {
-      extraClass = " no";
-    }
-  }
+function EmailRow({ email, onStatus }) {
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen(!open);
 
   return (
-    <div
-      className={`chat-bubble ${role === "assistant" ? "right" : "left"}${extraClass}`}
-    >
-      {display}
-      {isLong && (
-        <span className="read-more" onClick={() => setExpanded(!expanded)}>
-          {expanded ? " Read less" : " ... Read more"}
-        </span>
+    <>
+      <tr className={`status-${email.status}`}>
+        <td>{email.sender}</td>
+        <td>{email.subject}</td>
+        <td>{email.date}</td>
+        <td className="actions">
+          <button
+            className="info-btn"
+            disabled={!email.llm_sent}
+            onClick={toggle}
+          >
+            i
+          </button>
+          <button
+            className={`whitelist ${email.status === "whitelist" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "whitelist")}
+          >
+            W
+          </button>
+          <button
+            className={`ignore ${email.status === "ignore" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "ignore")}
+          >
+            I
+          </button>
+          <button
+            className={`spam ${email.status === "spam" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "spam")}
+          >
+            !
+          </button>
+          <button
+            className={`not-spam ${email.status === "not_spam" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "not_spam")}
+          >
+            ✓
+          </button>
+        </td>
+      </tr>
+      {open && (
+        <tr className="llm-details">
+          <td colSpan="4">
+            <pre className="llm-request">{email.request}</pre>
+            <pre className="llm-response">{email.response}</pre>
+          </td>
+        </tr>
       )}
-    </div>
+    </>
   );
 }
 
@@ -40,7 +65,6 @@ function App() {
   const [apiKey, setApiKey] = useState("");
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
-  const [chatLog, setChatLog] = useState([]);
   const [days, setDays] = useState(10);
   const [task, setTask] = useState(null);
   const [pollInterval, setPollInterval] = useState(1); // seconds
@@ -64,7 +88,6 @@ function App() {
           const t = d.tasks[0];
           setTask({ id: t.id, ...t });
           setEmails(t.emails || []);
-          setChatLog(t.log || []);
           setPollInterval(1);
         }
       })
@@ -105,7 +128,6 @@ function App() {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
           setEmails(d.emails);
-          setChatLog(d.log);
           if (d.stage === "done") {
             clearInterval(interval);
           }
@@ -143,7 +165,7 @@ function App() {
 
   return (
     <div className="container">
-      <div className="main">
+      <header className="header">
         <h1>Shopify Spam Filter</h1>
         <button onClick={linkGmail}>Link Gmail</button>
         <div>
@@ -190,6 +212,11 @@ function App() {
             <progress value={task.progress} max={task.total || 1}></progress>
           </div>
         )}
+        <button onClick={confirm} disabled={confirming}>
+          {confirming ? "Confirming..." : "Confirm"}
+        </button>
+      </header>
+      <div className="email-list">
         <table>
           <thead>
             <tr>
@@ -201,50 +228,10 @@ function App() {
           </thead>
           <tbody>
             {emails.map((e) => (
-              <tr key={e.id} className={`status-${e.status}`}>
-                <td>{e.sender}</td>
-                <td>{e.subject}</td>
-                <td>{e.date}</td>
-                <td>
-                  <button
-                    className={`spam ${e.status === "spam" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "spam")}
-                  >
-                    Spam
-                  </button>
-                  <button
-                    className={`not-spam ${e.status === "not_spam" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "not_spam")}
-                  >
-                    Not Spam
-                  </button>
-                  <button
-                    className={`whitelist ${e.status === "whitelist" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "whitelist")}
-                  >
-                    Whitelist
-                  </button>
-                  <button
-                    className={`ignore ${e.status === "ignore" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "ignore")}
-                  >
-                    Ignore
-                  </button>
-                </td>
-              </tr>
+              <EmailRow key={e.id} email={e} onStatus={updateStatus} />
             ))}
           </tbody>
         </table>
-        <button onClick={confirm} disabled={confirming}>
-          {confirming ? "Confirming..." : "Confirm Choices"}
-        </button>
-      </div>
-      <div className="chat-log">
-        {chatLog
-          .filter((c) => c.role !== "system")
-          .map((c, i) => (
-            <ChatBubble key={i} role={c.role} content={c.content} />
-          ))}
       </div>
     </div>
   );
