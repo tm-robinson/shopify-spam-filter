@@ -101,6 +101,17 @@ result tags from assistant replies so that the conversation is easier to read.
 - Metadata for whitelist and ignore lists is fetched via batch calls. (TODO)
 - Message bodies are retrieved in batches during scanning. (TODO)
 
+#### User Story: Retry failed batch fetches (DONE)
+
+**Description:** As a user, I want batch requests to retry with exponential
+backoff when Gmail returns rate limit errors so that message details are
+reliably fetched.
+
+**Test Scenarios:**
+
+- When some batch items fail with 429 errors, the helper retries until all
+  messages are retrieved. (TODO)
+
 #### User Story: Resume active scan tasks (TODO)
 
 **Description:** As a user, I want the app to detect any running scan tasks when I reload the page so that I can continue watching progress without starting a new scan.

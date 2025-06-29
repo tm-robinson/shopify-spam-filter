@@ -187,46 +187,77 @@ def list_all_messages(service, user_id="me", q=None):
 
 # CODEX: Added helper to fetch message details using Gmail batch requests
 def batch_get_messages(
-    service, ids, *, fmt="full", metadata_headers=None, batch_size=100
+    service,
+    ids,
+    *,
+    fmt="full",
+    metadata_headers=None,
+    batch_size=100,
+    max_attempts=5,
 ):
-    """Return message details for given ids using batch requests."""
-    results = {}
-
-    def callback(request_id, response, exception):
-        if exception:
-            logger.error("Batch fetch error for %s: %s", request_id, exception)
-        else:
-            results[request_id] = response
-
+    """Return message details for given ids using batch requests with retries."""
     headers = metadata_headers or []
-    for i in range(0, len(ids), batch_size):
-        batch = service.new_batch_http_request()
-        for msg_id in ids[i : i + batch_size]:  # noqa: E203
-            req = (
-                service.users()
-                .messages()
-                .get(
-                    userId="me", id=msg_id, format=fmt, metadataHeaders=headers
+    remaining = list(ids)
+    results = {}
+    attempt = 0
+
+    while remaining and attempt < max_attempts:
+        failed = []
+        for i in range(0, len(remaining), batch_size):
+            chunk = remaining[i : i + batch_size]  # noqa: E203
+            failed_chunk = []
+
+            def callback(request_id, response, exception, fc=failed_chunk):
+                if exception:
+                    logger.warning(
+                        "Batch fetch error for %s: %s", request_id, exception
+                    )
+                    fc.append(request_id)
+                else:
+                    results[request_id] = response
+
+            batch = service.new_batch_http_request()
+            for msg_id in chunk:
+                req = (
+                    service.users()
+                    .messages()
+                    .get(
+                        userId="me",
+                        id=msg_id,
+                        format=fmt,
+                        metadataHeaders=headers,
+                    )
                 )
-            )
-            batch.add(req, request_id=msg_id, callback=callback)
-        attempts = 0
-        while True:
+                batch.add(req, request_id=msg_id, callback=callback)
             try:
                 batch.execute()
-                break
             except HttpError as e:
-                if e.resp.status == 429 and attempts < 5:
-                    logger.warning(
-                        "Batch hit rate limit, retrying in %d seconds",
-                        2**attempts,
-                    )
-                    time.sleep(2**attempts)
-                    attempts += 1
+                if e.resp.status == 429:
+                    logger.warning("Batch execution rate limited: %s", e)
+                    failed_chunk.extend(chunk)
                 else:
                     logger.error("Failed to execute batch: %s", e)
-                    break
-    return [results.get(i) for i in ids if i in results]
+            failed.extend(failed_chunk)
+
+        remaining = failed
+        if remaining:
+            sleep = 2**attempt
+            logger.info(
+                "Retrying %d failed message fetches in %d seconds",
+                len(remaining),
+                sleep,
+            )
+            time.sleep(sleep)
+        attempt += 1
+
+    if remaining:
+        logger.error(
+            "Failed to fetch %d messages after %d attempts",
+            len(remaining),
+            attempt,
+        )
+
+    return results
 
 
 # Recursively extract the text or html body from a message payload.
@@ -316,14 +347,18 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(wmsgs)
             if wmsgs:
+                ids = [m["id"] for m in wmsgs]
                 details = batch_get_messages(
                     service,
-                    [m["id"] for m in wmsgs],
+                    ids,
                     fmt="metadata",
                     metadata_headers=["From"],
                 )
-                for idx, md in enumerate(details):
+                for idx, msg_id in enumerate(ids):
                     tasks[task_id]["progress"] = idx + 1
+                    md = details.get(msg_id)
+                    if not md:
+                        continue
                     sender = next(
                         (
                             h["value"]
@@ -342,14 +377,18 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(imsgs)
             if imsgs:
+                ids = [m["id"] for m in imsgs]
                 details = batch_get_messages(
                     service,
-                    [m["id"] for m in imsgs],
+                    ids,
                     fmt="metadata",
                     metadata_headers=["From"],
                 )
-                for idx, md in enumerate(details):
+                for idx, msg_id in enumerate(ids):
                     tasks[task_id]["progress"] = idx + 1
+                    md = details.get(msg_id)
+                    if not md:
+                        continue
                     sender = next(
                         (
                             h["value"]
@@ -379,18 +418,21 @@ def scan_emails():
             BATCH_SIZE = 100
             for start in range(0, len(messages), BATCH_SIZE):
                 msg_batch = messages[start : start + BATCH_SIZE]  # noqa: E203
+                ids = [m["id"] for m in msg_batch]
                 msg_details = batch_get_messages(
                     service,
-                    [m["id"] for m in msg_batch],
+                    ids,
                     fmt="full",
                 )
 
-                for offset, (msg, msg_detail) in enumerate(
-                    zip(msg_batch, msg_details)
-                ):
+                for offset, msg in enumerate(msg_batch):
                     idx = start + offset
                     tasks[task_id]["stage"] = "processing"
                     tasks[task_id]["progress"] = idx
+                    msg_detail = msg_details.get(msg["id"])
+                    if not msg_detail:
+                        logger.error("No details returned for %s", msg["id"])
+                        continue
                     payload = msg_detail.get("payload", {})
                     headers = payload.get("headers", [])
                     subject = next(
