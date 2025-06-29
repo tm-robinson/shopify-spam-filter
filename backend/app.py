@@ -192,7 +192,7 @@ def batch_get_messages(
     *,
     fmt="full",
     metadata_headers=None,
-    batch_size=10,
+    batch_size=20,
     max_attempts=20,
 ):
     """Return message details for given ids using batch requests with retries."""
