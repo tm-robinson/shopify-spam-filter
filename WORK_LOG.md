@@ -58,3 +58,4 @@
 - Confirm button disables and shows progress during API call.
 - Refactored message fetching to use Gmail batch requests for faster scans.
 - Documented new user story about batched fetching in PROJECT_BACKLOG.
+- Implemented retry logic for Gmail batch requests to handle 429 errors.

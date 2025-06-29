@@ -5,6 +5,7 @@ import logging
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import requests
 import threading
 import uuid
@@ -193,14 +194,28 @@ def batch_get_messages(
     headers = metadata_headers or []
     for i in range(0, len(ids), batch_size):
         batch = service.new_batch_http_request()
-        for msg_id in ids[i : i + batch_size]:
+        for msg_id in ids[i : i + batch_size]:  # noqa: E203
             req = (
                 service.users()
                 .messages()
                 .get(userId="me", id=msg_id, format=fmt, metadataHeaders=headers)
             )
             batch.add(req, request_id=msg_id, callback=callback)
-        batch.execute()
+        attempts = 0
+        while True:
+            try:
+                batch.execute()
+                break
+            except HttpError as e:
+                if e.resp.status == 429 and attempts < 5:
+                    logger.warning(
+                        "Batch hit rate limit, retrying in %d seconds", 2**attempts
+                    )
+                    time.sleep(2**attempts)
+                    attempts += 1
+                else:
+                    logger.error("Failed to execute batch: %s", e)
+                    break
     return [results.get(i) for i in ids if i in results]
 
 
