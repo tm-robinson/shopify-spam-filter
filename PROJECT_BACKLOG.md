@@ -92,6 +92,15 @@ result tags from assistant replies so that the conversation is easier to read.
 - More than 100 results are returned when querying messages and all are processed. (TODO)
 - Whitelist and ignore lists are fully retrieved across pages. (TODO)
 
+#### User Story: Fetch Gmail messages in batches (DONE)
+
+**Description:** As a user, I want message details retrieved using Gmail batch requests so that scans run faster.
+
+**Test Scenarios:**
+
+- Metadata for whitelist and ignore lists is fetched via batch calls. (TODO)
+- Message bodies are retrieved in batches during scanning. (TODO)
+
 #### User Story: Resume active scan tasks (TODO)
 
 **Description:** As a user, I want the app to detect any running scan tasks when I reload the page so that I can continue watching progress without starting a new scan.

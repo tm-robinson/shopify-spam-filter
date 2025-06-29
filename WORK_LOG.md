@@ -56,3 +56,5 @@
 
 - Display progress while fetching whitelist and ignore lists.
 - Confirm button disables and shows progress during API call.
+- Refactored message fetching to use Gmail batch requests for faster scans.
+- Documented new user story about batched fetching in PROJECT_BACKLOG.

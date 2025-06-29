@@ -177,6 +177,33 @@ def list_all_messages(service, user_id="me", q=None):
     return messages
 
 
+# CODEX: Added helper to fetch message details using Gmail batch requests
+def batch_get_messages(
+    service, ids, *, fmt="full", metadata_headers=None, batch_size=100
+):
+    """Return message details for given ids using batch requests."""
+    results = {}
+
+    def callback(request_id, response, exception):
+        if exception:
+            logger.error("Batch fetch error for %s: %s", request_id, exception)
+        else:
+            results[request_id] = response
+
+    headers = metadata_headers or []
+    for i in range(0, len(ids), batch_size):
+        batch = service.new_batch_http_request()
+        for msg_id in ids[i : i + batch_size]:
+            req = (
+                service.users()
+                .messages()
+                .get(userId="me", id=msg_id, format=fmt, metadataHeaders=headers)
+            )
+            batch.add(req, request_id=msg_id, callback=callback)
+        batch.execute()
+    return [results.get(i) for i in ids if i in results]
+
+
 # Recursively extract the text or html body from a message payload.
 def extract_email_body(payload):
     """Return decoded plain text body prioritising HTML."""
@@ -262,21 +289,14 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(wmsgs)
             if wmsgs:
-                for idx, m in enumerate(wmsgs):
+                details = batch_get_messages(
+                    service,
+                    [m["id"] for m in wmsgs],
+                    fmt="metadata",
+                    metadata_headers=["From"],
+                )
+                for idx, md in enumerate(details):
                     tasks[task_id]["progress"] = idx + 1
-                    logger.debug("Gmail request: get message %s for whitelist", m["id"])
-                    md = (
-                        service.users()
-                        .messages()
-                        .get(
-                            userId="me",
-                            id=m["id"],
-                            format="metadata",
-                            metadataHeaders=["From"],
-                        )
-                        .execute()
-                    )
-                    logger.debug("Gmail response: %s", md)
                     sender = next(
                         (
                             h["value"]
@@ -295,21 +315,14 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(imsgs)
             if imsgs:
-                for idx, m in enumerate(imsgs):
+                details = batch_get_messages(
+                    service,
+                    [m["id"] for m in imsgs],
+                    fmt="metadata",
+                    metadata_headers=["From"],
+                )
+                for idx, md in enumerate(details):
                     tasks[task_id]["progress"] = idx + 1
-                    logger.debug("Gmail request: get message %s for ignore", m["id"])
-                    md = (
-                        service.users()
-                        .messages()
-                        .get(
-                            userId="me",
-                            id=m["id"],
-                            format="metadata",
-                            metadataHeaders=["From"],
-                        )
-                        .execute()
-                    )
-                    logger.debug("Gmail response: %s", md)
                     sender = next(
                         (
                             h["value"]
@@ -333,16 +346,16 @@ def scan_emails():
                 with open(OPENROUTER_KEY_FILE) as f:
                     openrouter_key = f.read().strip()
 
-            for idx, msg in enumerate(messages):
+            msg_details = batch_get_messages(
+                service,
+                [m["id"] for m in messages],
+                fmt="full",
+            )
+
+            for idx, (msg, msg_detail) in enumerate(zip(messages, msg_details)):
                 tasks[task_id]["stage"] = "processing"
                 tasks[task_id]["progress"] = idx
-                logger.debug("Gmail request: get message %s", msg["id"])
-                msg_detail = (
-                    service.users()
-                    .messages()
-                    .get(userId="me", id=msg["id"], format="full")
-                    .execute()
-                )
+                logger.debug("Gmail batch message %s", msg["id"])
                 logger.debug("Gmail response: %s", msg_detail)
                 payload = msg_detail.get("payload", {})
                 headers = payload.get("headers", [])
