@@ -66,3 +66,8 @@
 - Updated scan workflow to look up message details by id so missing responses
   no longer corrupt results.
 - Added user story about retrying failed batch requests.
+
+- Added shadcn-style mobile friendly layout.
+- Moved confirm button and controls to sticky header.
+- Removed chat window and added expandable LLM info per email.
+- Updated PROJECT_BACKLOG and stylesheets.

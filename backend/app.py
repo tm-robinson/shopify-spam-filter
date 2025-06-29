@@ -148,19 +148,12 @@ def save_last_prompt(prompt: str) -> None:
 
 
 def get_label_id(service, name):
-    labels = (
-        service.users().labels().list(userId="me").execute().get("labels", [])
-    )
+    labels = service.users().labels().list(userId="me").execute().get("labels", [])
     for lbl in labels:
         if lbl["name"].lower() == name.lower():
             return lbl["id"]
     # create label if not exists
-    label = (
-        service.users()
-        .labels()
-        .create(userId="me", body={"name": name})
-        .execute()
-    )
+    label = service.users().labels().create(userId="me", body={"name": name}).execute()
     return label["id"]
 
 
@@ -272,9 +265,7 @@ def extract_email_body(payload):
         ):
             data = part["body"].get("data")
             if data:
-                text = base64.urlsafe_b64decode(data).decode(
-                    "utf-8", errors="ignore"
-                )
+                text = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
                 results.append((text, part.get("mimeType")))
         for sub in part.get("parts", []):
             collect_parts(sub, results)
@@ -406,9 +397,7 @@ def scan_emails():
             messages = list_all_messages(service, q=query)
 
             tasks[task_id]["total"] = len(messages)
-            logger.info(
-                "messages length is currently %d ", tasks[task_id]["total"]
-            )
+            logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = ""
             if os.path.exists(OPENROUTER_KEY_FILE):
                 with open(OPENROUTER_KEY_FILE) as f:
@@ -436,27 +425,15 @@ def scan_emails():
                     payload = msg_detail.get("payload", {})
                     headers = payload.get("headers", [])
                     subject = next(
-                        (
-                            h["value"]
-                            for h in headers
-                            if h["name"].lower() == "subject"
-                        ),
+                        (h["value"] for h in headers if h["name"].lower() == "subject"),
                         "",
                     )
                     sender = next(
-                        (
-                            h["value"]
-                            for h in headers
-                            if h["name"].lower() == "from"
-                        ),
+                        (h["value"] for h in headers if h["name"].lower() == "from"),
                         "",
                     )
                     date = next(
-                        (
-                            h["value"]
-                            for h in headers
-                            if h["name"].lower() == "date"
-                        ),
+                        (h["value"] for h in headers if h["name"].lower() == "date"),
                         "",
                     )
                     label_ids = msg_detail.get("labelIds", [])
@@ -464,11 +441,11 @@ def scan_emails():
                     body, _ = extract_email_body(payload)
                     words = body.split()
                     body_preview = " ".join(words[:500])
-                    text_md = (
-                        f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
-                    )
+                    text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
 
                     status = "not_spam"
+                    llm_sent = False
+                    answer = ""
                     if ignore_label in label_ids or sender in ignorelist:
                         status = "ignore"
                     elif whitelist_label in label_ids or sender in whitelist:
@@ -497,15 +474,12 @@ def scan_emails():
                                     {"role": "user", "content": text_md},
                                 ],
                             }
-                            headers_req = {
-                                "Authorization": f"Bearer {openrouter_key}"
-                            }
+                            headers_req = {"Authorization": f"Bearer {openrouter_key}"}
                             try:
                                 logger.debug("OpenRouter request: %s", data)
                                 start_time = time.time()
                                 resp = requests.post(
-                                    "https://openrouter.ai/api/v1/"
-                                    "chat/completions",
+                                    "https://openrouter.ai/api/v1/" "chat/completions",
                                     json=data,
                                     headers=headers_req,
                                 )
@@ -521,9 +495,9 @@ def scan_emails():
                                     time.time() - start_time,
                                 )
                                 if resp.status_code == 200:
-                                    answer = resp.json()["choices"][0][
-                                        "message"
-                                    ]["content"]
+                                    answer = resp.json()["choices"][0]["message"][
+                                        "content"
+                                    ]
                                     tasks[task_id]["log"].append(
                                         {"role": "system", "content": prompt}
                                     )
@@ -538,6 +512,7 @@ def scan_emails():
                                     )
                                     if "yes" in answer.lower():
                                         status = "spam"
+                                    llm_sent = True
                                 else:
                                     logger.error(
                                         "OpenRouter error: %s - %s",
@@ -548,9 +523,7 @@ def scan_emails():
                                 pass
 
                     if status == "spam":
-                        logger.debug(
-                            "Gmail request: add spam label to %s", msg["id"]
-                        )
+                        logger.debug("Gmail request: add spam label to %s", msg["id"])
                         service.users().messages().modify(
                             userId="me",
                             id=msg["id"],
@@ -573,9 +546,7 @@ def scan_emails():
                             },
                         ).execute()
                     elif status == "ignore":
-                        logger.debug(
-                            "Gmail request: add ignore label to %s", msg["id"]
-                        )
+                        logger.debug("Gmail request: add ignore label to %s", msg["id"])
                         service.users().messages().modify(
                             userId="me",
                             id=msg["id"],
@@ -595,6 +566,9 @@ def scan_emails():
                             "sender": sender,
                             "date": date,
                             "status": status,
+                            "request": text_md if llm_sent else "",
+                            "response": answer if llm_sent else "",
+                            "llm_sent": llm_sent,
                         }
                     )
 
@@ -677,9 +651,7 @@ def update_status():
         service.users().messages().modify(
             userId="me",
             id=msg_id,
-            body={
-                "removeLabelIds": [spam_label, whitelist_label, ignore_label]
-            },
+            body={"removeLabelIds": [spam_label, whitelist_label, ignore_label]},
         ).execute()
     update_task_email_status(msg_id, status)
     return ("", 204)
@@ -691,9 +663,7 @@ def confirm():
     if not creds:
         return jsonify({"error": "Not authenticated"}), 401
     service = build("gmail", "v1", credentials=creds)
-    logger.info(
-        "Confirming %s messages as spam", len(request.json.get("ids", []))
-    )
+    logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     spam_label = get_label_id(service, "shopify-spam")
     ids = request.json.get("ids", [])
     task_id = request.json.get("task_id")
