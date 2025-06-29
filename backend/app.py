@@ -192,14 +192,14 @@ def batch_get_messages(
     *,
     fmt="full",
     metadata_headers=None,
-    batch_size=100,
-    max_attempts=5,
+    batch_size=10,
+    max_attempts=20,
 ):
     """Return message details for given ids using batch requests with retries."""
     headers = metadata_headers or []
     remaining = list(ids)
     results = {}
-    attempt = 0
+    attempt = 1
 
     while remaining and attempt < max_attempts:
         failed = []
@@ -241,7 +241,7 @@ def batch_get_messages(
 
         remaining = failed
         if remaining:
-            sleep = 2**attempt
+            sleep = 2**attempt  # exponential backoff
             logger.info(
                 "Retrying %d failed message fetches in %d seconds",
                 len(remaining),
@@ -415,7 +415,7 @@ def scan_emails():
                     openrouter_key = f.read().strip()
 
             # CODEX: Fetch and process messages in batches to minimize waiting
-            BATCH_SIZE = 100
+            BATCH_SIZE = 25
             for start in range(0, len(messages), BATCH_SIZE):
                 msg_batch = messages[start : start + BATCH_SIZE]  # noqa: E203
                 ids = [m["id"] for m in msg_batch]
