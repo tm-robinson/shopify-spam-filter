@@ -5,6 +5,7 @@ import logging
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import requests
 import threading
 import uuid
@@ -147,12 +148,19 @@ def save_last_prompt(prompt: str) -> None:
 
 
 def get_label_id(service, name):
-    labels = service.users().labels().list(userId="me").execute().get("labels", [])
+    labels = (
+        service.users().labels().list(userId="me").execute().get("labels", [])
+    )
     for lbl in labels:
         if lbl["name"].lower() == name.lower():
             return lbl["id"]
     # create label if not exists
-    label = service.users().labels().create(userId="me", body={"name": name}).execute()
+    label = (
+        service.users()
+        .labels()
+        .create(userId="me", body={"name": name})
+        .execute()
+    )
     return label["id"]
 
 
@@ -177,6 +185,81 @@ def list_all_messages(service, user_id="me", q=None):
     return messages
 
 
+# CODEX: Added helper to fetch message details using Gmail batch requests
+def batch_get_messages(
+    service,
+    ids,
+    *,
+    fmt="full",
+    metadata_headers=None,
+    batch_size=20,
+    max_attempts=20,
+):
+    """Return message details for given ids using batch requests with retries."""
+    headers = metadata_headers or []
+    remaining = list(ids)
+    results = {}
+    attempt = 1
+
+    while remaining and attempt < max_attempts:
+        failed = []
+        for i in range(0, len(remaining), batch_size):
+            chunk = remaining[i : i + batch_size]  # noqa: E203
+            failed_chunk = []
+
+            def callback(request_id, response, exception, fc=failed_chunk):
+                if exception:
+                    logger.warning(
+                        "Batch fetch error for %s: %s", request_id, exception
+                    )
+                    fc.append(request_id)
+                else:
+                    results[request_id] = response
+
+            batch = service.new_batch_http_request()
+            for msg_id in chunk:
+                req = (
+                    service.users()
+                    .messages()
+                    .get(
+                        userId="me",
+                        id=msg_id,
+                        format=fmt,
+                        metadataHeaders=headers,
+                    )
+                )
+                batch.add(req, request_id=msg_id, callback=callback)
+            try:
+                batch.execute()
+            except HttpError as e:
+                if e.resp.status == 429:
+                    logger.warning("Batch execution rate limited: %s", e)
+                    failed_chunk.extend(chunk)
+                else:
+                    logger.error("Failed to execute batch: %s", e)
+            failed.extend(failed_chunk)
+
+        remaining = failed
+        if remaining:
+            sleep = 2**attempt  # exponential backoff
+            logger.info(
+                "Retrying %d failed message fetches in %d seconds",
+                len(remaining),
+                sleep,
+            )
+            time.sleep(sleep)
+        attempt += 1
+
+    if remaining:
+        logger.error(
+            "Failed to fetch %d messages after %d attempts",
+            len(remaining),
+            attempt,
+        )
+
+    return results
+
+
 # Recursively extract the text or html body from a message payload.
 def extract_email_body(payload):
     """Return decoded plain text body prioritising HTML."""
@@ -189,7 +272,9 @@ def extract_email_body(payload):
         ):
             data = part["body"].get("data")
             if data:
-                text = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+                text = base64.urlsafe_b64decode(data).decode(
+                    "utf-8", errors="ignore"
+                )
                 results.append((text, part.get("mimeType")))
         for sub in part.get("parts", []):
             collect_parts(sub, results)
@@ -262,21 +347,18 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(wmsgs)
             if wmsgs:
-                for idx, m in enumerate(wmsgs):
+                ids = [m["id"] for m in wmsgs]
+                details = batch_get_messages(
+                    service,
+                    ids,
+                    fmt="metadata",
+                    metadata_headers=["From"],
+                )
+                for idx, msg_id in enumerate(ids):
                     tasks[task_id]["progress"] = idx + 1
-                    logger.debug("Gmail request: get message %s for whitelist", m["id"])
-                    md = (
-                        service.users()
-                        .messages()
-                        .get(
-                            userId="me",
-                            id=m["id"],
-                            format="metadata",
-                            metadataHeaders=["From"],
-                        )
-                        .execute()
-                    )
-                    logger.debug("Gmail response: %s", md)
+                    md = details.get(msg_id)
+                    if not md:
+                        continue
                     sender = next(
                         (
                             h["value"]
@@ -295,21 +377,18 @@ def scan_emails():
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(imsgs)
             if imsgs:
-                for idx, m in enumerate(imsgs):
+                ids = [m["id"] for m in imsgs]
+                details = batch_get_messages(
+                    service,
+                    ids,
+                    fmt="metadata",
+                    metadata_headers=["From"],
+                )
+                for idx, msg_id in enumerate(ids):
                     tasks[task_id]["progress"] = idx + 1
-                    logger.debug("Gmail request: get message %s for ignore", m["id"])
-                    md = (
-                        service.users()
-                        .messages()
-                        .get(
-                            userId="me",
-                            id=m["id"],
-                            format="metadata",
-                            metadataHeaders=["From"],
-                        )
-                        .execute()
-                    )
-                    logger.debug("Gmail response: %s", md)
+                    md = details.get(msg_id)
+                    if not md:
+                        continue
                     sender = next(
                         (
                             h["value"]
@@ -327,155 +406,197 @@ def scan_emails():
             messages = list_all_messages(service, q=query)
 
             tasks[task_id]["total"] = len(messages)
-            logger.info("messages length is currently %d ", tasks[task_id]["total"])
+            logger.info(
+                "messages length is currently %d ", tasks[task_id]["total"]
+            )
             openrouter_key = ""
             if os.path.exists(OPENROUTER_KEY_FILE):
                 with open(OPENROUTER_KEY_FILE) as f:
                     openrouter_key = f.read().strip()
 
-            for idx, msg in enumerate(messages):
-                tasks[task_id]["stage"] = "processing"
-                tasks[task_id]["progress"] = idx
-                logger.debug("Gmail request: get message %s", msg["id"])
-                msg_detail = (
-                    service.users()
-                    .messages()
-                    .get(userId="me", id=msg["id"], format="full")
-                    .execute()
+            # CODEX: Fetch and process messages in batches to minimize waiting
+            BATCH_SIZE = 25
+            for start in range(0, len(messages), BATCH_SIZE):
+                msg_batch = messages[start : start + BATCH_SIZE]  # noqa: E203
+                ids = [m["id"] for m in msg_batch]
+                msg_details = batch_get_messages(
+                    service,
+                    ids,
+                    fmt="full",
                 )
-                logger.debug("Gmail response: %s", msg_detail)
-                payload = msg_detail.get("payload", {})
-                headers = payload.get("headers", [])
-                subject = next(
-                    (h["value"] for h in headers if h["name"].lower() == "subject"),
-                    "",
-                )
-                sender = next(
-                    (h["value"] for h in headers if h["name"].lower() == "from"),
-                    "",
-                )
-                date = next(
-                    (h["value"] for h in headers if h["name"].lower() == "date"),
-                    "",
-                )
-                label_ids = msg_detail.get("labelIds", [])
 
-                body, _ = extract_email_body(payload)
-                words = body.split()
-                body_preview = " ".join(words[:500])
-                text_md = f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
+                for offset, msg in enumerate(msg_batch):
+                    idx = start + offset
+                    tasks[task_id]["stage"] = "processing"
+                    tasks[task_id]["progress"] = idx
+                    msg_detail = msg_details.get(msg["id"])
+                    if not msg_detail:
+                        logger.error("No details returned for %s", msg["id"])
+                        continue
+                    payload = msg_detail.get("payload", {})
+                    headers = payload.get("headers", [])
+                    subject = next(
+                        (
+                            h["value"]
+                            for h in headers
+                            if h["name"].lower() == "subject"
+                        ),
+                        "",
+                    )
+                    sender = next(
+                        (
+                            h["value"]
+                            for h in headers
+                            if h["name"].lower() == "from"
+                        ),
+                        "",
+                    )
+                    date = next(
+                        (
+                            h["value"]
+                            for h in headers
+                            if h["name"].lower() == "date"
+                        ),
+                        "",
+                    )
+                    label_ids = msg_detail.get("labelIds", [])
 
-                status = "not_spam"
-                if ignore_label in label_ids or sender in ignorelist:
-                    status = "ignore"
-                elif whitelist_label in label_ids or sender in whitelist:
-                    status = "whitelist"
-                elif spam_label in label_ids:
-                    # dont reprocess emails that were previously labelled as spam
-                    status = "spam"
-                else:
-                    if openrouter_key:
-                        data = {
-                            "model": "deepseek/deepseek-chat-v3-0324:free",
-                            "messages": [
-                                {
-                                    "role": "system",
-                                    "content": (
-                                        prompt
-                                        + (
-                                            " Start your response with "
-                                            "<RESULT>YES</RESULT> or "
-                                            "<RESULT>NO</RESULT> followed by "
-                                            "the justification for "
-                                            "your answer."
-                                        )
-                                    ),
-                                },
-                                {"role": "user", "content": text_md},
-                            ],
-                        }
-                        headers_req = {"Authorization": f"Bearer {openrouter_key}"}
-                        try:
-                            logger.debug("OpenRouter request: %s", data)
-                            start_time = time.time()
-                            resp = requests.post(
-                                "https://openrouter.ai/api/v1/" "chat/completions",
-                                json=data,
-                                headers=headers_req,
-                            )
-                            logger.debug(
-                                "OpenRouter response %s: %s",
-                                resp.status_code,
-                                resp.text,
-                            )
-                            logger.info(
-                                "OpenRouter response %s received %d characters after %.2f seconds",
-                                resp.status_code,
-                                len(resp.text),
-                                time.time() - start_time,
-                            )
-                            if resp.status_code == 200:
-                                answer = resp.json()["choices"][0]["message"]["content"]
-                                tasks[task_id]["log"].append(
-                                    {"role": "system", "content": prompt}
+                    body, _ = extract_email_body(payload)
+                    words = body.split()
+                    body_preview = " ".join(words[:500])
+                    text_md = (
+                        f"Subject: {subject}\nFrom: {sender}\n\n{body_preview}"
+                    )
+
+                    status = "not_spam"
+                    if ignore_label in label_ids or sender in ignorelist:
+                        status = "ignore"
+                    elif whitelist_label in label_ids or sender in whitelist:
+                        status = "whitelist"
+                    elif spam_label in label_ids:
+                        # dont reprocess emails that were previously labelled as spam
+                        status = "spam"
+                    else:
+                        if openrouter_key:
+                            data = {
+                                "model": "deepseek/deepseek-chat-v3-0324:free",
+                                "messages": [
+                                    {
+                                        "role": "system",
+                                        "content": (
+                                            prompt
+                                            + (
+                                                " Start your response with "
+                                                "<RESULT>YES</RESULT> or "
+                                                "<RESULT>NO</RESULT> followed by "
+                                                "the justification for "
+                                                "your answer."
+                                            )
+                                        ),
+                                    },
+                                    {"role": "user", "content": text_md},
+                                ],
+                            }
+                            headers_req = {
+                                "Authorization": f"Bearer {openrouter_key}"
+                            }
+                            try:
+                                logger.debug("OpenRouter request: %s", data)
+                                start_time = time.time()
+                                resp = requests.post(
+                                    "https://openrouter.ai/api/v1/"
+                                    "chat/completions",
+                                    json=data,
+                                    headers=headers_req,
                                 )
-                                tasks[task_id]["log"].append(
-                                    {"role": "user", "content": text_md}
-                                )
-                                tasks[task_id]["log"].append(
-                                    {"role": "assistant", "content": answer}
-                                )
-                                if "yes" in answer.lower():
-                                    status = "spam"
-                            else:
-                                logger.error(
-                                    "OpenRouter error: %s - %s",
+                                logger.debug(
+                                    "OpenRouter response %s: %s",
                                     resp.status_code,
                                     resp.text,
                                 )
-                        except Exception:
-                            pass
+                                logger.info(
+                                    "OpenRouter response %s received %d characters after %.2f seconds",
+                                    resp.status_code,
+                                    len(resp.text),
+                                    time.time() - start_time,
+                                )
+                                if resp.status_code == 200:
+                                    answer = resp.json()["choices"][0][
+                                        "message"
+                                    ]["content"]
+                                    tasks[task_id]["log"].append(
+                                        {"role": "system", "content": prompt}
+                                    )
+                                    tasks[task_id]["log"].append(
+                                        {"role": "user", "content": text_md}
+                                    )
+                                    tasks[task_id]["log"].append(
+                                        {
+                                            "role": "assistant",
+                                            "content": answer,
+                                        }
+                                    )
+                                    if "yes" in answer.lower():
+                                        status = "spam"
+                                else:
+                                    logger.error(
+                                        "OpenRouter error: %s - %s",
+                                        resp.status_code,
+                                        resp.text,
+                                    )
+                            except Exception:
+                                pass
 
-                if status == "spam":
-                    logger.debug("Gmail request: add spam label to %s", msg["id"])
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg["id"],
-                        body={
-                            "addLabelIds": [spam_label],
-                            "removeLabelIds": [whitelist_label],
-                        },
-                    ).execute()
-                elif status == "whitelist":
-                    logger.debug("Gmail request: add whitelist label to %s", msg["id"])
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg["id"],
-                        body={
-                            "addLabelIds": [whitelist_label],
-                            "removeLabelIds": [spam_label],
-                        },
-                    ).execute()
-                elif status == "ignore":
-                    logger.debug("Gmail request: add ignore label to %s", msg["id"])
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg["id"],
-                        body={
-                            "addLabelIds": [ignore_label],
-                            "removeLabelIds": [spam_label, whitelist_label],
-                        },
-                    ).execute()
+                    if status == "spam":
+                        logger.debug(
+                            "Gmail request: add spam label to %s", msg["id"]
+                        )
+                        service.users().messages().modify(
+                            userId="me",
+                            id=msg["id"],
+                            body={
+                                "addLabelIds": [spam_label],
+                                "removeLabelIds": [whitelist_label],
+                            },
+                        ).execute()
+                    elif status == "whitelist":
+                        logger.debug(
+                            "Gmail request: add whitelist label to %s",
+                            msg["id"],
+                        )
+                        service.users().messages().modify(
+                            userId="me",
+                            id=msg["id"],
+                            body={
+                                "addLabelIds": [whitelist_label],
+                                "removeLabelIds": [spam_label],
+                            },
+                        ).execute()
+                    elif status == "ignore":
+                        logger.debug(
+                            "Gmail request: add ignore label to %s", msg["id"]
+                        )
+                        service.users().messages().modify(
+                            userId="me",
+                            id=msg["id"],
+                            body={
+                                "addLabelIds": [ignore_label],
+                                "removeLabelIds": [
+                                    spam_label,
+                                    whitelist_label,
+                                ],
+                            },
+                        ).execute()
 
-                tasks[task_id]["emails"].append(
-                    {
-                        "id": msg["id"],
-                        "subject": subject,
-                        "sender": sender,
-                        "date": date,
-                        "status": status,
-                    }
-                )
+                    tasks[task_id]["emails"].append(
+                        {
+                            "id": msg["id"],
+                            "subject": subject,
+                            "sender": sender,
+                            "date": date,
+                            "status": status,
+                        }
+                    )
 
             tasks[task_id]["progress"] = tasks[task_id]["total"]
             tasks[task_id]["stage"] = "done"
@@ -556,7 +677,9 @@ def update_status():
         service.users().messages().modify(
             userId="me",
             id=msg_id,
-            body={"removeLabelIds": [spam_label, whitelist_label, ignore_label]},
+            body={
+                "removeLabelIds": [spam_label, whitelist_label, ignore_label]
+            },
         ).execute()
     update_task_email_status(msg_id, status)
     return ("", 204)
@@ -568,7 +691,9 @@ def confirm():
     if not creds:
         return jsonify({"error": "Not authenticated"}), 401
     service = build("gmail", "v1", credentials=creds)
-    logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
+    logger.info(
+        "Confirming %s messages as spam", len(request.json.get("ids", []))
+    )
     spam_label = get_label_id(service, "shopify-spam")
     ids = request.json.get("ids", [])
     task_id = request.json.get("task_id")
@@ -611,7 +736,10 @@ def confirm():
             service.users().messages().modify(
                 userId="me",
                 id=msg_id,
-                body={"addLabelIds": [spam_label], "removeLabelIds": ["INBOX"]},
+                body={
+                    "addLabelIds": [spam_label],
+                    "removeLabelIds": ["INBOX"],
+                },
             ).execute()
             update_task_email_status(msg_id, "spam")
         except Exception:

@@ -56,3 +56,13 @@
 
 - Display progress while fetching whitelist and ignore lists.
 - Confirm button disables and shows progress during API call.
+- Refactored message fetching to use Gmail batch requests for faster scans.
+- Documented new user story about batched fetching in PROJECT_BACKLOG.
+- Implemented retry logic for Gmail batch requests to handle 429 errors.
+- Processed messages in smaller batches during scans to reduce wait times.
+
+- Improved `batch_get_messages` to retry failed ids with exponential backoff
+  and return a mapping keyed by message id.
+- Updated scan workflow to look up message details by id so missing responses
+  no longer corrupt results.
+- Added user story about retrying failed batch requests.
