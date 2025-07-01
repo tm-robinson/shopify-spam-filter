@@ -1,28 +1,37 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Inter", sans-serif;
   margin: 0;
   padding: 0;
   background: #f5f5f5;
 }
 .container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
 }
-.main {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-}
-.chat-log {
-  width: 30%;
-  max-width: 400px;
-  border-left: 1px solid #ccc;
+.header {
+  position: sticky;
+  top: 0;
   background: #fff;
-  padding: 10px;
-  overflow-y: auto;
+  padding: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1;
   display: flex;
-  flex-direction: column;
-  font-size: 0.75em; /* CODEX: reduce chat text size */
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+.email-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+.filters {
+  padding: 5px;
+  background: #fff;
+  position: sticky;
+  top: 40px;
+  z-index: 1;
 }
 table {
   width: 100%;
@@ -33,6 +42,10 @@ th,
 td {
   padding: 8px;
   border-bottom: 1px solid #ddd;
+  font-size: 0.9em;
+}
+.email-cell {
+  line-height: 1.2;
 }
 
 tr.status-whitelist {
@@ -56,63 +69,57 @@ tr.status-not_spam {
 }
 button {
   margin-right: 5px;
+  border: none;
+  color: #000;
+  cursor: pointer;
 }
 button.active {
   font-weight: bold;
 }
-button.spam.active {
-  background: #ffdddd;
+.info-btn {
+  background: #ccc;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: 8px;
 }
-button.not-spam.active {
-  background: #ddffdd;
+.info-btn:disabled {
+  opacity: 0.5;
 }
-button.whitelist.active {
+button.spam {
+  background: #ff6666;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+button.not-spam {
+  background: #66ff66;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+button.whitelist {
   background: #ddddff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
 }
-button.ignore.active {
+button.ignore {
   background: #ffffdd;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
 }
 .progress {
   margin: 10px 0;
 }
-.chat-user {
-  color: #333;
-  margin-bottom: 5px;
-}
-.chat-assistant {
-  color: #555;
-  margin-bottom: 5px;
-}
-
-/* CODEX: Added styles for chat bubbles */
-.chat-bubble {
-  max-width: 90%;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  position: relative;
-}
-
-.chat-bubble.left {
-  align-self: flex-start;
-  background: #f0f0f0;
-}
-
-.chat-bubble.right {
-  align-self: flex-end;
-  background: #f0f0f0;
-}
-
-.chat-bubble.yes {
-  background: #ffdddd;
-}
-
-.chat-bubble.no {
-  background: #ddffdd;
-}
-
-.read-more {
-  color: blue;
-  cursor: pointer;
-  margin-left: 5px;
+.llm-details pre {
+  white-space: pre-wrap;
+  margin: 5px 0;
 }
