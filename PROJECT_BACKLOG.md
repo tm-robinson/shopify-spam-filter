@@ -64,6 +64,23 @@
 - "i" buttons toggle the LLM request and response for each email. (TODO)
 - Action buttons use circular icons and keep their colours. (TODO)
 
+#### User Story: Backend config for API key and polling (TODO)
+
+**Description:** As a user, I want the OpenRouter API key and polling interval stored in configuration files instead of the UI so the interface stays uncluttered.
+
+**Test Scenarios:**
+
+- Backend loads the API key from environment variables or `openrouter.key`. (TODO)
+- Poll interval comes from an environment variable. (TODO)
+
+#### User Story: Filter email list by status (TODO)
+
+**Description:** As a user, I want to quickly show or hide emails in each status category so I can focus on the ones that matter.
+
+**Test Scenarios:**
+
+- Clicking a filter button toggles visibility of that status. (TODO)
+
 #### User Story: Persist last used scan prompt (DONE)
 
 **Description:** As a user, I want the application to remember the last prompt I used when scanning emails so that it is pre-filled the next time I open the app.

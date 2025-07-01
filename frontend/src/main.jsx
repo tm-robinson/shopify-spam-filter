@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./App.css";
 
+const DEFAULT_POLL_INTERVAL = Number(import.meta.env.VITE_POLL_INTERVAL || 1);
+
 const DEFAULT_PROMPT =
   "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.";
 
@@ -62,13 +64,15 @@ function EmailRow({ email, onStatus }) {
 }
 
 function App() {
-  const [apiKey, setApiKey] = useState("");
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
   const [days, setDays] = useState(10);
   const [task, setTask] = useState(null);
-  const [pollInterval, setPollInterval] = useState(1); // seconds
   const [confirming, setConfirming] = useState(false);
+  const [showSpam, setShowSpam] = useState(true);
+  const [showNotSpam, setShowNotSpam] = useState(true);
+  const [showWhitelist, setShowWhitelist] = useState(true);
+  const [showIgnore, setShowIgnore] = useState(true);
 
   useEffect(() => {
     fetch("/last-prompt")
@@ -88,7 +92,6 @@ function App() {
           const t = d.tasks[0];
           setTask({ id: t.id, ...t });
           setEmails(t.emails || []);
-          setPollInterval(1);
         }
       })
       .catch(() => {});
@@ -96,14 +99,6 @@ function App() {
 
   const linkGmail = () => {
     window.location.href = "/auth";
-  };
-
-  const saveKey = () => {
-    fetch("/openrouter-key", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: apiKey }),
-    });
   };
 
   const scan = () => {
@@ -120,7 +115,7 @@ function App() {
 
   useEffect(() => {
     if (!task || !task.id) return;
-    const intervalMs = pollInterval * 1000;
+    const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
         .then((r) => r.json())
@@ -134,7 +129,7 @@ function App() {
         });
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [task?.id, pollInterval]);
+  }, [task?.id]);
 
   const updateStatus = (id, status) => {
     fetch("/update-status", {
@@ -166,16 +161,7 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-        <h1>Shopify Spam Filter</h1>
         <button onClick={linkGmail}>Link Gmail</button>
-        <div>
-          <input
-            placeholder="OpenRouter API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          <button onClick={saveKey}>Save Key</button>
-        </div>
         <div>
           <textarea
             value={prompt}
@@ -194,15 +180,6 @@ function App() {
             onChange={(e) => setDays(e.target.value)}
           />
         </div>
-        <div>
-          <label>Poll Interval (s): </label>
-          <input
-            type="number"
-            min="1"
-            value={pollInterval}
-            onChange={(e) => setPollInterval(parseInt(e.target.value, 10) || 1)}
-          />
-        </div>
         <button onClick={scan}>Scan Emails</button>
         {task && task.stage !== "done" && (
           <div className="progress">
@@ -216,6 +193,32 @@ function App() {
           {confirming ? "Confirming..." : "Confirm"}
         </button>
       </header>
+      <div className="filters">
+        <button
+          className={showSpam ? "active" : ""}
+          onClick={() => setShowSpam(!showSpam)}
+        >
+          Spam
+        </button>
+        <button
+          className={showNotSpam ? "active" : ""}
+          onClick={() => setShowNotSpam(!showNotSpam)}
+        >
+          Not Spam
+        </button>
+        <button
+          className={showWhitelist ? "active" : ""}
+          onClick={() => setShowWhitelist(!showWhitelist)}
+        >
+          Whitelist
+        </button>
+        <button
+          className={showIgnore ? "active" : ""}
+          onClick={() => setShowIgnore(!showIgnore)}
+        >
+          Ignore
+        </button>
+      </div>
       <div className="email-list">
         <table>
           <thead>
@@ -227,9 +230,17 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {emails.map((e) => (
-              <EmailRow key={e.id} email={e} onStatus={updateStatus} />
-            ))}
+            {emails
+              .filter(
+                (e) =>
+                  (showSpam || e.status !== "spam") &&
+                  (showNotSpam || e.status !== "not_spam") &&
+                  (showWhitelist || e.status !== "whitelist") &&
+                  (showIgnore || e.status !== "ignore"),
+              )
+              .map((e) => (
+                <EmailRow key={e.id} email={e} onStatus={updateStatus} />
+              ))}
           </tbody>
         </table>
       </div>

@@ -13,14 +13,25 @@ body {
   position: sticky;
   top: 0;
   background: #fff;
-  padding: 10px;
+  padding: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
 }
 .email-list {
   flex: 1;
   overflow-y: auto;
   padding: 10px;
+}
+.filters {
+  padding: 5px;
+  background: #fff;
+  position: sticky;
+  top: 40px;
+  z-index: 1;
 }
 table {
   width: 100%;

@@ -36,7 +36,7 @@ This project contains a simple Flask backend and React frontend to scan your Gma
    python backend/app.py
    ```
    Set `FRONTEND_URL` if your React dev server runs on a different URL (default `http://localhost:5173/`).
-5. Open the URL shown by the dev server in your browser. Link your Gmail account, enter your OpenRouter API key and scan emails. If you reload the page while a scan is running, the app will reconnect and keep showing progress.
+5. Open the URL shown by the dev server in your browser. Link your Gmail account and scan emails. The backend reads the OpenRouter API key from `OPENROUTER_API_KEY` or `backend/openrouter.key`. If you reload the page while a scan is running, the app will reconnect and keep showing progress.
 
 To create a production build of the frontend, run `npm run build` inside `frontend/` and serve the generated `dist` directory.
 

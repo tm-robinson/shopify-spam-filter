@@ -97,14 +97,6 @@ def oauth2callback():
     return redirect(frontend)
 
 
-@app.route("/openrouter-key", methods=["POST"])
-def save_openrouter_key():
-    key = request.json.get("key")
-    with open(OPENROUTER_KEY_FILE, "w") as f:
-        f.write(key)
-    return ("", 204)
-
-
 @app.route("/last-prompt")
 def last_prompt():
     """Return the most recently used prompt"""
@@ -398,8 +390,8 @@ def scan_emails():
 
             tasks[task_id]["total"] = len(messages)
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
-            openrouter_key = ""
-            if os.path.exists(OPENROUTER_KEY_FILE):
+            openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+            if not openrouter_key and os.path.exists(OPENROUTER_KEY_FILE):
                 with open(OPENROUTER_KEY_FILE) as f:
                     openrouter_key = f.read().strip()
 
