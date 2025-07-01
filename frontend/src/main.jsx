@@ -66,7 +66,7 @@ function EmailRow({ email, onStatus }) {
 function App() {
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
-  const [days, setDays] = useState(10);
+  const [days, setDays] = useState(3);
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [showSpam, setShowSpam] = useState(true);
