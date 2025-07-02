@@ -64,6 +64,8 @@
 - "i" buttons toggle the LLM request and response for each email. (TODO)
 - Action buttons use circular icons and keep their colours. (TODO)
 - Email rows show a short date format and avoid horizontal scrolling on mobile. (TODO)
+- Page width fits on mobile screens. (TODO)
+- Default scan range is 3 days. (TODO)
 
 #### User Story: Backend config for API key and polling (TODO)
 

@@ -301,7 +301,7 @@ def scan_emails():
     prompt = data.get("prompt", "Describe what emails to identify")
     # CODEX: Save the prompt for future sessions
     save_last_prompt(prompt)
-    days = int(data.get("days", 10))
+    days = int(data.get("days", 3))  # CODEX: scan 3 days by default
     date_after = datetime.datetime.now() - datetime.timedelta(days=days)
 
     task_id = str(uuid.uuid4())

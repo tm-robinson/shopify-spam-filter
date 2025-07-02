@@ -79,7 +79,7 @@ function EmailRow({ email, onStatus }) {
 function App() {
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
-  const [days, setDays] = useState(10);
+  const [days, setDays] = useState(3); // CODEX: default scan range reduced
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [showSpam, setShowSpam] = useState(true);
@@ -177,10 +177,11 @@ function App() {
         <button onClick={linkGmail}>Link Gmail</button>
         <div>
           <textarea
+            className="prompt-input"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows="3"
-            cols="60"
+            cols="45"
           />
         </div>
         <div>

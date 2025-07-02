@@ -8,6 +8,8 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-width: 480px; /* CODEX: limit width for mobile screens */
+  margin: 0 auto;
 }
 .header {
   position: sticky;
@@ -37,6 +39,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
+  table-layout: fixed; /* CODEX: keep table within mobile width */
 }
 th,
 td {
@@ -46,6 +49,7 @@ td {
 }
 .email-cell {
   line-height: 1.2;
+  word-break: break-word;
 }
 
 tr.status-whitelist {
@@ -118,6 +122,10 @@ button.ignore {
 }
 .progress {
   margin: 10px 0;
+}
+.prompt-input {
+  width: 75%; /* CODEX: reduce prompt box width on mobile */
+  max-width: 420px;
 }
 .llm-details pre {
   white-space: pre-wrap;

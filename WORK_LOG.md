@@ -78,4 +78,6 @@
 - Added status filter buttons and tightened header spacing.
 - Updated README and backlog.
 - Combined sender and subject columns, shortened date display and reduced email font size for better mobile layout.
+- Limited max UI width for mobile screens and narrowed prompt input.
+- Changed default scan range to 3 days.
 
