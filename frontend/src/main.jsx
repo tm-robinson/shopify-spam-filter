@@ -29,7 +29,7 @@ function EmailRow({ email, onStatus }) {
           <br />
           {email.subject}
         </td>
-        <td>{formatDate(email.date)}</td>
+        <td className="date-col">{formatDate(email.date)}</td>
         <td className="actions">
           <button
             className="info-btn"
@@ -238,8 +238,8 @@ function App() {
           <thead>
             <tr>
               <th>Email</th>
-              <th>Date</th>
-              <th>Action</th>
+              <th className="date-col">Date</th>
+              <th className="actions">Action</th>
             </tr>
           </thead>
           <tbody>

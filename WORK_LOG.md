@@ -85,3 +85,10 @@
 ## 2nd July 2025
 
 - Made page width responsive: wider on desktop screens while keeping mobile width narrow.
+
+## 3rd July 2025
+
+- Removed container margins so layout spans full width
+- Made date column narrow and fixed action column width
+- Email list padding removed to save space
+- Updated backlog for completed UI scenarios
