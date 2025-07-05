@@ -67,7 +67,7 @@
 - Page width fits on mobile screens. (DONE)
 - Layout expands on desktop screens for better readability. (DONE)
 - Default scan range is 3 days. (DONE)
-- Date and action columns use minimal width so the email column expands. (TODO)
+- Date and action columns use minimal width so the email column expands. (DONE)
 
 #### User Story: Backend config for API key and polling (TODO)
 
@@ -85,6 +85,32 @@
 **Test Scenarios:**
 
 - Clicking a filter button toggles visibility of that status. (TODO)
+
+#### User Story: Open Gmail messages from list (DONE)
+
+**Description:** As a user, I want to open the original Gmail message by clicking the sender or subject in the email list so that I can review it quickly.
+
+**Test Scenarios:**
+
+- Clicking the sender or subject opens the Gmail message in a new tab. (TODO)
+
+#### User Story: Truncate long subject lines (TODO)
+
+**Description:** As a user, I want long subject text shortened in the email list so that it fits neatly on mobile screens.
+
+**Test Scenarios:**
+
+- Subjects longer than 50 characters display only the first 50 characters followed by `...`. (TODO)
+- Subjects 50 characters or shorter display in full. (TODO)
+
+#### User Story: Open Gmail app on mobile (TODO)
+
+**Description:** As a mobile user, I want clicking the sender or subject to launch the Gmail app if installed so viewing messages is smoother.
+
+**Test Scenarios:**
+
+- On phones, links open the Gmail app when available. (TODO)
+- On desktop browsers the link opens in a new tab. (TODO)
 
 #### User Story: Persist last used scan prompt (DONE)
 
