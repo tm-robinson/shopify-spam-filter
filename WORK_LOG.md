@@ -129,3 +129,7 @@
 - Updated save_task to use UPSERT so tasks table keeps a single row per task.
 - Frontend now merges pending status updates to stop flicker when clicking buttons.
 - Updated backlog scenarios for Gmail account reuse and confirmation progress.
+- Confirm endpoint now confirms all emails and only labels spam.
+- Scan task worker skips emails already confirmed.
+- /scan-tasks no longer returns closed tasks.
+- Updated backlog scenarios for closed task filtering and confirmed email handling.
