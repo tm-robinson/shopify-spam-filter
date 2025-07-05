@@ -67,6 +67,30 @@ def update_task_email_status(msg_id: str, status: str) -> None:
                 email["status"] = status
 
 
+def update_task(
+    task_id: str,
+    *,
+    stage: str | None = None,
+    progress: int | None = None,
+    total: int | None = None,
+) -> None:
+    """Update task info and persist to the database."""
+    if stage is not None:
+        tasks[task_id]["stage"] = stage
+    if progress is not None:
+        tasks[task_id]["progress"] = progress
+    if total is not None:
+        tasks[task_id]["total"] = total
+    logger.debug(
+        "Task %s stage=%s progress=%s/%s",
+        task_id,
+        tasks[task_id].get("stage"),
+        tasks[task_id].get("progress"),
+        tasks[task_id].get("total"),
+    )
+    database.save_task(tasks[task_id])
+
+
 # Google OAuth client credentials
 CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
@@ -165,11 +189,13 @@ def save_last_prompt(prompt: str) -> None:
 
 
 def get_label_id(service, name):
+    logger.debug("Gmail request: list labels")
     labels = service.users().labels().list(userId="me").execute().get("labels", [])
     for lbl in labels:
         if lbl["name"].lower() == name.lower():
             return lbl["id"]
     # create label if not exists
+    logger.debug("Gmail request: create label %s", name)
     label = service.users().labels().create(userId="me", body={"name": name}).execute()
     return label["id"]
 
@@ -240,7 +266,11 @@ def batch_get_messages(
                 )
                 batch.add(req, request_id=msg_id, callback=callback)
             try:
+                logger.debug("Gmail batch request: get %d messages", len(chunk))
                 batch.execute()
+                logger.debug(
+                    "Gmail batch response received with %d results", len(results)
+                )
             except HttpError as e:
                 if e.resp.status == 429:
                     logger.warning("Batch execution rate limited: %s", e)
@@ -366,11 +396,11 @@ def scan_emails():
             persist_label = get_label_id(service, "scan-persist")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
-            tasks[task_id]["stage"] = "listing whitelist emails"
+            update_task(task_id, stage="listing whitelist emails")
             wmsgs = list_all_messages(service, q="label:whitelist -label:scan-persist")
-            tasks[task_id]["stage"] = "fetching whitelist emails"
-            tasks[task_id]["progress"] = 0
-            tasks[task_id]["total"] = len(wmsgs)
+            update_task(
+                task_id, stage="fetching whitelist emails", progress=0, total=len(wmsgs)
+            )
             if wmsgs:
                 ids = [m["id"] for m in wmsgs]
                 details = batch_get_messages(
@@ -380,7 +410,7 @@ def scan_emails():
                     metadata_headers=["From"],
                 )
                 for idx, msg_id in enumerate(ids):
-                    tasks[task_id]["progress"] = idx + 1
+                    update_task(task_id, progress=idx + 1)
                     md = details.get(msg_id)
                     if not md:
                         continue
@@ -402,13 +432,13 @@ def scan_emails():
 
             # gather ignored senders
             logger.debug("Gmail request: list ignore emails")
-            tasks[task_id]["stage"] = "listing ignore emails"
+            update_task(task_id, stage="listing ignore emails")
             imsgs = list_all_messages(
                 service, q="label:spam-filter-ignore -label:scan-persist"
             )
-            tasks[task_id]["stage"] = "fetching ignore emails"
-            tasks[task_id]["progress"] = 0
-            tasks[task_id]["total"] = len(imsgs)
+            update_task(
+                task_id, stage="fetching ignore emails", progress=0, total=len(imsgs)
+            )
             if imsgs:
                 ids = [m["id"] for m in imsgs]
                 details = batch_get_messages(
@@ -418,7 +448,7 @@ def scan_emails():
                     metadata_headers=["From"],
                 )
                 for idx, msg_id in enumerate(ids):
-                    tasks[task_id]["progress"] = idx + 1
+                    update_task(task_id, progress=idx + 1)
                     md = details.get(msg_id)
                     if not md:
                         continue
@@ -439,6 +469,7 @@ def scan_emails():
                     ).execute()
 
             # gather previously labelled spam senders
+            update_task(task_id, stage="listing spam emails")
             s_msgs = list_all_messages(
                 service, q="label:shopify-spam -label:scan-persist"
             )
@@ -449,6 +480,9 @@ def scan_emails():
                     ids,
                     fmt="metadata",
                     metadata_headers=["From"],
+                )
+                update_task(
+                    task_id, stage="fetching spam emails", progress=0, total=len(ids)
                 )
                 for msg_id in ids:
                     md = details.get(msg_id)
@@ -469,14 +503,15 @@ def scan_emails():
                         id=msg_id,
                         body={"addLabelIds": [persist_label]},
                     ).execute()
+                    update_task(task_id, progress=tasks[task_id]["progress"] + 1)
 
-            tasks[task_id]["stage"] = "fetching"
+            update_task(task_id, stage="fetching")
 
             query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
 
             messages = list_all_messages(service, q=query)
 
-            tasks[task_id]["total"] = len(messages)
+            update_task(task_id, total=len(messages))
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
             if not openrouter_key and os.path.exists(OPENROUTER_KEY_FILE):
@@ -496,8 +531,7 @@ def scan_emails():
 
                 for offset, msg in enumerate(msg_batch):
                     idx = start + offset
-                    tasks[task_id]["stage"] = "processing"
-                    tasks[task_id]["progress"] = idx
+                    update_task(task_id, stage="processing", progress=idx)
                     msg_detail = msg_details.get(msg["id"])
                     if not msg_detail:
                         logger.error("No details returned for %s", msg["id"])
@@ -657,9 +691,11 @@ def scan_emails():
                     database.save_email_status(user_id, msg["id"], status)
                     database.save_task(tasks[task_id])
 
-            tasks[task_id]["progress"] = tasks[task_id]["total"]
-            tasks[task_id]["stage"] = "done"
-            database.save_task(tasks[task_id])
+            update_task(
+                task_id,
+                stage="done",
+                progress=tasks[task_id]["total"],
+            )
         except Exception:
             import traceback
 
