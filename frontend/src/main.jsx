@@ -114,7 +114,13 @@ function App() {
 
     // CODEX: Check for any running tasks when the page loads
     fetch("/scan-tasks")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) {
+          alert("Failed to load scan tasks");
+          throw new Error("scan tasks");
+        }
+        return r.json();
+      })
       .then((d) => {
         if (d.tasks && d.tasks.length > 0) {
           const t = d.tasks[0];
@@ -140,6 +146,10 @@ function App() {
           alert("Please link Gmail before scanning");
           return null;
         }
+        if (!r.ok) {
+          alert("Failed to start scan");
+          throw new Error("scan");
+        }
         return r.json();
       })
       .then((data) => {
@@ -154,15 +164,22 @@ function App() {
     const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) {
+            alert("Failed to fetch scan status");
+            throw new Error("status");
+          }
+          return r.json();
+        })
         .then((d) => {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
-          setEmails(d.emails);
+          setEmails(d.emails || []);
           if (d.stage === "done") {
             clearInterval(interval);
           }
-        });
+        })
+        .catch(() => {});
     }, intervalMs);
     return () => clearInterval(interval);
   }, [task?.id]);
@@ -172,7 +189,13 @@ function App() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
-    });
+    })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Failed to update status");
+        }
+      })
+      .catch(() => {});
     setEmails(emails.map((e) => (e.id === id ? { ...e, status } : e)));
   };
 
@@ -184,11 +207,18 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids, task_id: task?.id }),
     })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Failed to confirm spam");
+          throw new Error("confirm");
+        }
+      })
       .then(() => {
         // CODEX: Clear task data once confirmation closes it
         setTask(null);
         setEmails([]);
       })
+      .catch(() => {})
       .finally(() => {
         setConfirming(false);
       });

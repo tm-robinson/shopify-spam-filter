@@ -48,28 +48,6 @@ def set_user_cookie(resp):
     return resp
 
 
-# CODEX: Initialize database and manage user identity cookie
-database.init_db()
-
-
-@app.before_request
-def assign_user():
-    user_id = request.cookies.get("user_id")
-    if not user_id:
-        user_id = str(uuid.uuid4())
-        g.new_user = True
-    else:
-        g.new_user = False
-    g.user_id = user_id
-
-
-@app.after_request
-def set_user_cookie(resp):
-    if getattr(g, "new_user", False):
-        resp.set_cookie("user_id", g.user_id)
-    return resp
-
-
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
 OPENROUTER_KEY_FILE = os.path.join(os.path.dirname(__file__), "openrouter.key")
@@ -694,6 +672,11 @@ def scan_emails():
 @app.route("/scan-status/<task_id>")
 def scan_status(task_id):
     task = tasks.get(task_id)
+    if not task:
+        db_tasks = {t["id"]: t for t in database.load_tasks(g.user_id)}
+        task = db_tasks.get(task_id)
+        if task:
+            tasks[task_id] = task
     if not task:
         return jsonify({"error": "not found"}), 404
     return jsonify(task)

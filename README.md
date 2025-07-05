@@ -41,3 +41,7 @@ This project contains a simple Flask backend and React frontend to scan your Gma
 To create a production build of the frontend, run `npm run build` inside `frontend/` and serve the generated `dist` directory.
 
 Spam results are stored using the `shopify-spam` label in Gmail. Confirming choices will label messages as `shopify-spam` and remove them from the inbox.
+
+## Resetting the Database
+
+Run `./reset_db.sh` to delete `backend/data.db` and recreate an empty database using `schema.sql`. This is helpful when testing changes from a clean state.

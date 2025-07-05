@@ -109,3 +109,7 @@
 - Fixed database import path and persist_label variable errors.
 - Alert users to link Gmail if scanning without authentication.
 - Fixed background worker to avoid using Flask context outside requests.
+- Fixed /scan-status to retrieve tasks from the database if missing in memory.
+- Frontend now alerts on backend errors and handles missing task data gracefully.
+- Updated backlog status for resuming active scan tasks.
+- Created reset_db.sh script to wipe and reinitialize SQLite database.
