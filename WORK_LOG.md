@@ -113,3 +113,4 @@
 - Frontend now alerts on backend errors and handles missing task data gracefully.
 - Updated backlog status for resuming active scan tasks.
 - Created reset_db.sh script to wipe and reinitialize SQLite database.
+- Added detailed debug logging for task stages and Gmail API calls. Updated task progress in the database during scans.

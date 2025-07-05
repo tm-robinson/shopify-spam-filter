@@ -210,3 +210,13 @@ reliably fetched.
 
 **Test Scenarios:**
 - Running `reset_db.sh` removes any existing data and recreates the schema. (TODO)
+
+#### User Story: Enhanced debug logging (DONE)
+
+**Description:** As a developer, I want detailed debug logs and real-time task status updates so that troubleshooting is easier.
+
+**Test Scenarios:**
+- Stage transitions are logged with task id. (TODO)
+- Gmail API requests are logged at debug level. (TODO)
+- Task stage in the database updates as progress occurs. (TODO)
+
