@@ -24,7 +24,29 @@ load_dotenv()  # take environment variables
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+# CODEX: Initialize database and manage user identity cookie
+database.init_db()
+
+
+@app.before_request
+def assign_user():
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        g.new_user = True
+    else:
+        g.new_user = False
+    g.user_id = user_id
+
+
+@app.after_request
+def set_user_cookie(resp):
+    if getattr(g, "new_user", False):
+        resp.set_cookie("user_id", g.user_id)
+    return resp
+
 
 # CODEX: Initialize database and manage user identity cookie
 database.init_db()
@@ -359,7 +381,6 @@ def scan_emails():
             ignorelist = set(database.get_senders(user_id, "ignore"))
             spamlist = set(database.get_senders(user_id, "spam"))
             confirmed_ids = set(database.get_confirmed_emails(user_id))
-
             service = build("gmail", "v1", credentials=creds)
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
