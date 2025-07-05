@@ -126,3 +126,6 @@
 - Updated confirm endpoint to run in a background thread and track progress while confirming.
 - Frontend now polls /scan-status only when a task is active and resumes during confirmation.
 - Marked active task detection user story as DONE and added story for confirmation progress tracking.
+- Updated save_task to use UPSERT so tasks table keeps a single row per task.
+- Frontend now merges pending status updates to stop flicker when clicking buttons.
+- Updated backlog scenarios for Gmail account reuse and confirmation progress.

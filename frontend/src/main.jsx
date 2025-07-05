@@ -97,6 +97,7 @@ function App() {
   const [days, setDays] = useState(3); // CODEX: default scan range reduced
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const [pendingStatuses, setPendingStatuses] = useState({});
   const [showSpam, setShowSpam] = useState(true);
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
@@ -176,7 +177,22 @@ function App() {
         .then((d) => {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
-          setEmails(d.emails || []);
+          const incoming = d.emails || [];
+          setEmails((prev) =>
+            incoming.map((e) => ({
+              ...e,
+              status: pendingStatuses[e.id] || e.status,
+            })),
+          );
+          setPendingStatuses((prev) => {
+            const remaining = { ...prev };
+            incoming.forEach((e) => {
+              if (prev[e.id] && prev[e.id] === e.status) {
+                delete remaining[e.id];
+              }
+            });
+            return remaining;
+          });
           if (d.stage === "done" || d.stage === "closed") {
             clearInterval(interval);
             if (d.stage === "closed") {
@@ -191,6 +207,7 @@ function App() {
   }, [task?.id, task?.stage]);
 
   const updateStatus = (id, status) => {
+    setPendingStatuses((prev) => ({ ...prev, [id]: status }));
     fetch("/update-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -202,7 +219,7 @@ function App() {
         }
       })
       .catch(() => {});
-    setEmails(emails.map((e) => (e.id === id ? { ...e, status } : e)));
+    setEmails((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
   };
 
   const confirm = () => {

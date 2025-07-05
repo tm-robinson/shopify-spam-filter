@@ -60,9 +60,20 @@ def get_user_id_for_email(email: str):
 
 def save_task(task: dict) -> None:
     with get_connection() as conn:
+        # CODEX: Use UPSERT to avoid creating extra rows during updates
         conn.execute(
-            "REPLACE INTO tasks (id, user_id, stage, progress, total, emails_json, log_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            """
+            INSERT INTO tasks (
+                id, user_id, stage, progress, total, emails_json, log_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                user_id=excluded.user_id,
+                stage=excluded.stage,
+                progress=excluded.progress,
+                total=excluded.total,
+                emails_json=excluded.emails_json,
+                log_json=excluded.log_json
+            """,
             (
                 task.get("id"),
                 task.get("user_id"),
