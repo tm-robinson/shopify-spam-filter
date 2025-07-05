@@ -14,8 +14,26 @@ function EmailRow({ email, onStatus }) {
   return (
     <>
       <tr className={`status-${email.status}`}>
-        <td>{email.sender}</td>
-        <td>{email.subject}</td>
+        <td>
+          <a
+            href={email.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            {email.sender}
+          </a>
+        </td>
+        <td>
+          <a
+            href={email.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            {email.subject}
+          </a>
+        </td>
         <td>{email.date}</td>
         <td className="actions">
           <button

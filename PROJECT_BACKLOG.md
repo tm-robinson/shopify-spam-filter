@@ -154,7 +154,6 @@ reliably fetched.
 
 - Changing an email status while a scan is running persists when the task status is fetched. (TODO)
 
-
 #### User Story: Detailed scan progress (TODO)
 
 **Description:** As a user, I want to see progress while the whitelist and ignore lists are fetched so I know the scan is still running.
@@ -164,3 +163,11 @@ reliably fetched.
 - Progress text updates while fetching whitelist emails. (TODO)
 - Progress text updates while fetching ignore emails. (TODO)
 - Confirm button shows a "confirming" state until the server responds. (TODO)
+
+#### User Story: Deep link to Gmail messages (DONE)
+
+**Description:** As a user, I want to open the original email in Gmail by tapping the sender or subject so that I can review the full message easily.
+
+**Test Scenarios:**
+
+- The sender and subject columns link directly to the Gmail message. (TODO)

@@ -557,6 +557,7 @@ def scan_emails():
                             "subject": subject,
                             "sender": sender,
                             "date": date,
+                            "url": f"https://mail.google.com/mail/u/0/#inbox/{msg['id']}",
                             "status": status,
                             "request": text_md if llm_sent else "",
                             "response": answer if llm_sent else "",

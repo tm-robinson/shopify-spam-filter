@@ -71,6 +71,7 @@
 - Moved confirm button and controls to sticky header.
 - Removed chat window and added expandable LLM info per email.
 - Updated PROJECT_BACKLOG and stylesheets.
+
 ## 1st July 2025
 
 - Configured backend to load OpenRouter key from env or file and removed save key endpoint.
@@ -78,3 +79,7 @@
 - Added status filter buttons and tightened header spacing.
 - Updated README and backlog.
 
+## 5th July 2025
+
+- Added Gmail deep links to sender and subject columns in the email list.
+- Documented new user story for deep linking in PROJECT_BACKLOG.md.
