@@ -7,6 +7,16 @@ const DEFAULT_POLL_INTERVAL = Number(import.meta.env.VITE_POLL_INTERVAL || 1);
 const DEFAULT_PROMPT =
   "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.";
 
+function formatDate(str) {
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return str;
+  const diff = Date.now() - d.getTime();
+  if (diff < 24 * 60 * 60 * 1000) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString([], { day: "2-digit", month: "short" });
+}
+
 function EmailRow({ email, onStatus }) {
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen(!open);
@@ -14,9 +24,12 @@ function EmailRow({ email, onStatus }) {
   return (
     <>
       <tr className={`status-${email.status}`}>
-        <td>{email.sender}</td>
-        <td>{email.subject}</td>
-        <td>{email.date}</td>
+        <td className="email-cell">
+          <strong>{email.sender}</strong>
+          <br />
+          {email.subject}
+        </td>
+        <td className="date-col">{formatDate(email.date)}</td>
         <td className="actions">
           <button
             className="info-btn"
@@ -53,7 +66,7 @@ function EmailRow({ email, onStatus }) {
       </tr>
       {open && (
         <tr className="llm-details">
-          <td colSpan="4">
+          <td colSpan="3">
             <pre className="llm-request">{email.request}</pre>
             <pre className="llm-response">{email.response}</pre>
           </td>
@@ -66,7 +79,7 @@ function EmailRow({ email, onStatus }) {
 function App() {
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
-  const [days, setDays] = useState(3);
+  const [days, setDays] = useState(3); // CODEX: default scan range reduced
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [showSpam, setShowSpam] = useState(true);
@@ -164,10 +177,11 @@ function App() {
         <button onClick={linkGmail}>Link Gmail</button>
         <div>
           <textarea
+            className="prompt-input"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows="3"
-            cols="60"
+            cols="45"
           />
         </div>
         <div>
@@ -223,10 +237,9 @@ function App() {
         <table>
           <thead>
             <tr>
-              <th>Sender</th>
-              <th>Subject</th>
-              <th>Date</th>
-              <th>Action</th>
+              <th>Email</th>
+              <th className="date-col">Date</th>
+              <th className="actions">Action</th>
             </tr>
           </thead>
           <tbody>

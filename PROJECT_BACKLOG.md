@@ -56,13 +56,18 @@
 
 #### User Story: Improved UI styling (DONE)
 
-**Description:** As a user, I want a modern, mobile friendly interface with fixed controls at the top, circular action buttons and expandable LLM details for each email.
+**Description:** As a user, I want a modern, mobile friendly interface with fixed controls at the top, compact email rows with sender and subject together, circular action buttons and expandable LLM details for each email.
 **Test Scenarios:**
 
-- Confirm button is fixed at the top with other controls. (TODO)
-- Email list scrolls beneath the header on mobile screens. (TODO)
-- "i" buttons toggle the LLM request and response for each email. (TODO)
-- Action buttons use circular icons and keep their colours. (TODO)
+- Confirm button is fixed at the top with other controls. (DONE)
+- Email list scrolls beneath the header on mobile screens. (DONE)
+- "i" buttons toggle the LLM request and response for each email. (DONE)
+- Action buttons use circular icons and keep their colours. (DONE)
+- Email rows show a short date format and avoid horizontal scrolling on mobile. (DONE)
+- Page width fits on mobile screens. (DONE)
+- Layout expands on desktop screens for better readability. (DONE)
+- Default scan range is 3 days. (DONE)
+- Date and action columns use minimal width so the email column expands. (TODO)
 
 #### User Story: Backend config for API key and polling (TODO)
 
@@ -153,7 +158,6 @@ reliably fetched.
 **Test Scenarios:**
 
 - Changing an email status while a scan is running persists when the task status is fetched. (TODO)
-
 
 #### User Story: Detailed scan progress (TODO)
 

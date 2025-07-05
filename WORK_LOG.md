@@ -71,10 +71,24 @@
 - Moved confirm button and controls to sticky header.
 - Removed chat window and added expandable LLM info per email.
 - Updated PROJECT_BACKLOG and stylesheets.
+  
 ## 1st July 2025
 
 - Configured backend to load OpenRouter key from env or file and removed save key endpoint.
 - Removed API key and poll interval inputs from UI.
 - Added status filter buttons and tightened header spacing.
 - Updated README and backlog.
+- Combined sender and subject columns, shortened date display and reduced email font size for better mobile layout.
+- Limited max UI width for mobile screens and narrowed prompt input.
+- Changed default scan range to 3 days.
 
+## 2nd July 2025
+
+- Made page width responsive: wider on desktop screens while keeping mobile width narrow.
+
+## 3rd July 2025
+
+- Removed container margins so layout spans full width
+- Made date column narrow and fixed action column width
+- Email list padding removed to save space
+- Updated backlog for completed UI scenarios
