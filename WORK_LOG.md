@@ -133,3 +133,4 @@
 - Scan task worker skips emails already confirmed.
 - /scan-tasks no longer returns closed tasks.
 - Updated backlog scenarios for closed task filtering and confirmed email handling.
+- Fixed confirm worker to store user_id before starting thread.

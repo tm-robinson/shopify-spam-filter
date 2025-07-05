@@ -849,12 +849,14 @@ def confirm():
         # CODEX: indicate confirmation progress
         update_task(task_id, stage="confirming", progress=0, total=len(ids))
 
+    user_id = g.user_id
+
     def worker():
         service = build("gmail", "v1", credentials=creds)
         spam_label = get_label_id(service, "shopify-spam")
         persist_label = get_label_id(service, "scan-persist")
         for idx, msg_id in enumerate(ids):
-            status = database.get_email_status(g.user_id, msg_id) or "not_spam"
+            status = database.get_email_status(user_id, msg_id) or "not_spam"
             if status == "spam":
                 logger.debug("Gmail request: get message %s for confirmation", msg_id)
                 msg = (
@@ -899,12 +901,12 @@ def confirm():
                         },
                     ).execute()
                     update_task_email_status(msg_id, "spam")
-                    database.save_sender(g.user_id, sender, "spam")
+                    database.save_sender(user_id, sender, "spam")
                 except Exception:
                     import traceback
 
                     logger.error(traceback.format_exc())
-            database.confirm_email(g.user_id, msg_id)
+            database.confirm_email(user_id, msg_id)
             if task_id and task_id in tasks:
                 update_task(task_id, progress=idx + 1)
 
