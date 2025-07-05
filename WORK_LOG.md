@@ -83,3 +83,4 @@
 
 - Added Gmail deep links to sender and subject columns in the email list.
 - Documented new user story for deep linking in PROJECT_BACKLOG.md.
+- Combined sender and subject into one email column with a direct Gmail link.

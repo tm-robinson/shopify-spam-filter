@@ -22,15 +22,7 @@ function EmailRow({ email, onStatus }) {
             style={{ color: "inherit", textDecoration: "none" }}
           >
             {email.sender}
-          </a>
-        </td>
-        <td>
-          <a
-            href={email.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
+            <br />
             {email.subject}
           </a>
         </td>
@@ -71,7 +63,7 @@ function EmailRow({ email, onStatus }) {
       </tr>
       {open && (
         <tr className="llm-details">
-          <td colSpan="4">
+          <td colSpan="3">
             <pre className="llm-request">{email.request}</pre>
             <pre className="llm-response">{email.response}</pre>
           </td>
@@ -241,8 +233,7 @@ function App() {
         <table>
           <thead>
             <tr>
-              <th>Sender</th>
-              <th>Subject</th>
+              <th>Email</th>
               <th>Date</th>
               <th>Action</th>
             </tr>

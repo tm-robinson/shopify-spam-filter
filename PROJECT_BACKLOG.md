@@ -166,8 +166,8 @@ reliably fetched.
 
 #### User Story: Deep link to Gmail messages (DONE)
 
-**Description:** As a user, I want to open the original email in Gmail by tapping the sender or subject so that I can review the full message easily.
+**Description:** As a user, I want to open the original email in Gmail by tapping the email entry so that I can review the full message easily.
 
 **Test Scenarios:**
 
-- The sender and subject columns link directly to the Gmail message. (TODO)
+- The email column links directly to the Gmail message with the subject below the sender. (TODO)
