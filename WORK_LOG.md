@@ -107,3 +107,5 @@
 - Persist scan tasks and email classifications to SQLite.
 - Gmail labels updated with scan-persist once stored.
 - Fixed database import path and persist_label variable errors.
+- Alert users to link Gmail if scanning without authentication.
+- Fixed background worker to avoid using Flask context outside requests.

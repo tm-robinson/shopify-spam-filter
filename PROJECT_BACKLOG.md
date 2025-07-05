@@ -195,7 +195,7 @@ reliably fetched.
 - Progress text updates while fetching ignore emails. (TODO)
 - Confirm button shows a "confirming" state until the server responds. (TODO)
 
-#### User Story: Multi-user support with persistent storage (TODO)
+#### User Story: Multi-user support with persistent storage (DONE)
 
 **Description:** As a user I want my Gmail token, scan tasks and results stored separately so multiple users can use the app.
 

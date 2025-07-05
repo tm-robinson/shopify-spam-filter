@@ -48,6 +48,28 @@ def set_user_cookie(resp):
     return resp
 
 
+# CODEX: Initialize database and manage user identity cookie
+database.init_db()
+
+
+@app.before_request
+def assign_user():
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        g.new_user = True
+    else:
+        g.new_user = False
+    g.user_id = user_id
+
+
+@app.after_request
+def set_user_cookie(resp):
+    if getattr(g, "new_user", False):
+        resp.set_cookie("user_id", g.user_id)
+    return resp
+
+
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
 OPENROUTER_KEY_FILE = os.path.join(os.path.dirname(__file__), "openrouter.key")
@@ -351,13 +373,14 @@ def scan_emails():
     )
     logger.info("Starting scan task %s for last %s days", task_id, days)
 
+    user_id = g.user_id
+
     def worker():
         try:
-            whitelist = set(database.get_senders(g.user_id, "whitelist"))
-            ignorelist = set(database.get_senders(g.user_id, "ignore"))
-            spamlist = set(database.get_senders(g.user_id, "spam"))
-            confirmed_ids = set(database.get_confirmed_emails(g.user_id))
-
+            whitelist = set(database.get_senders(user_id, "whitelist"))
+            ignorelist = set(database.get_senders(user_id, "ignore"))
+            spamlist = set(database.get_senders(user_id, "spam"))
+            confirmed_ids = set(database.get_confirmed_emails(user_id))
             service = build("gmail", "v1", credentials=creds)
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
@@ -392,7 +415,7 @@ def scan_emails():
                         "",
                     )
                     whitelist.add(sender)
-                    database.save_sender(g.user_id, sender, "whitelist")
+                    database.save_sender(user_id, sender, "whitelist")
                     service.users().messages().modify(
                         userId="me",
                         id=msg_id,
@@ -430,7 +453,7 @@ def scan_emails():
                         "",
                     )
                     ignorelist.add(sender)
-                    database.save_sender(g.user_id, sender, "ignore")
+                    database.save_sender(user_id, sender, "ignore")
                     service.users().messages().modify(
                         userId="me",
                         id=msg_id,
@@ -462,7 +485,7 @@ def scan_emails():
                         "",
                     )
                     spamlist.add(sender)
-                    database.save_sender(g.user_id, sender, "spam")
+                    database.save_sender(user_id, sender, "spam")
                     service.users().messages().modify(
                         userId="me",
                         id=msg_id,
@@ -653,7 +676,7 @@ def scan_emails():
                             "llm_sent": llm_sent,
                         }
                     )
-                    database.save_email_status(g.user_id, msg["id"], status)
+                    database.save_email_status(user_id, msg["id"], status)
                     database.save_task(tasks[task_id])
 
             tasks[task_id]["progress"] = tasks[task_id]["total"]
