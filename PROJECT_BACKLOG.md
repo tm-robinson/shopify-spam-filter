@@ -183,7 +183,7 @@ reliably fetched.
 
 **Test Scenarios:**
 
-- Changing an email status while a scan is running persists when the task status is fetched. (TODO)
+- Changing an email status while a scan is running persists when the task status is fetched. (DONE)
 
 #### User Story: Detailed scan progress (TODO)
 
@@ -203,6 +203,31 @@ reliably fetched.
 - Returning to the site preserves my Gmail link via cookie. (TODO)
 - Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed spam senders are not scanned again. (TODO)
+
+#### User Story: Recognise Gmail account across browsers (DONE)
+
+**Description:** As a user, I want linking Gmail from a new browser to restore
+my existing account by matching the Gmail address so that my saved tasks and
+labels remain accessible.
+
+**Test Scenarios:**
+- Linking Gmail with an address that already exists reuses the previous
+  `user_id` cookie. (DONE)
+
+#### User Story: Detect active tasks across browsers (DONE)
+
+**Description:** As a user, I want the UI to automatically show progress for any running scan task started on another device or tab so that I don't have to start a new scan.
+
+**Test Scenarios:**
+- Opening the app on a second device while a scan is running begins polling automatically. (DONE)
+
+#### User Story: Confirmation progress tracking (TODO)
+
+**Description:** As a user, I want the task to show a confirming stage with progress so I know how many emails are finalised when I click confirm.
+
+**Test Scenarios:**
+- Task stage switches to "confirming" when the confirm button is pressed. (DONE)
+- Progress increases as each email is confirmed. (DONE)
 
 #### User Story: Reset the database (TODO)
 

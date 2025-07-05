@@ -3,6 +3,13 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
     token TEXT NOT NULL
 );
 
+-- CODEX: Map Gmail addresses to user ids so returning users on new browsers
+-- share the same account
+CREATE TABLE IF NOT EXISTS gmail_users (
+    email TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,

@@ -114,3 +114,18 @@
 - Updated backlog status for resuming active scan tasks.
 - Created reset_db.sh script to wipe and reinitialize SQLite database.
 - Added detailed debug logging for task stages and Gmail API calls. Updated task progress in the database during scans.
+
+### Additional 5th July 2025
+
+- Added gmail_users table to map email addresses to user IDs.
+- OAuth callback now checks for existing gmail_users entry and reuses the user ID if found.
+- Updated database module with helpers to save and lookup Gmail addresses.
+- Documented new user story for recognising Gmail accounts across browsers.
+- Frontend now polls /scan-tasks every second to detect tasks started on other devices.
+- Marked Gmail account recognition user story as DONE and documented new user story for cross-browser task detection.
+- Updated confirm endpoint to run in a background thread and track progress while confirming.
+- Frontend now polls /scan-status only when a task is active and resumes during confirmation.
+- Marked active task detection user story as DONE and added story for confirmation progress tracking.
+- Updated save_task to use UPSERT so tasks table keeps a single row per task.
+- Frontend now merges pending status updates to stop flicker when clicking buttons.
+- Updated backlog scenarios for Gmail account reuse and confirmation progress.

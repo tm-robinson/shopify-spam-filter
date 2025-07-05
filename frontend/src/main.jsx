@@ -97,6 +97,7 @@ function App() {
   const [days, setDays] = useState(3); // CODEX: default scan range reduced
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const [pendingStatuses, setPendingStatuses] = useState({});
   const [showSpam, setShowSpam] = useState(true);
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
@@ -129,6 +130,7 @@ function App() {
         }
       })
       .catch(() => {});
+    // no continuous polling here; status polling starts once a task is active
   }, []);
 
   const linkGmail = () => {
@@ -161,6 +163,7 @@ function App() {
 
   useEffect(() => {
     if (!task || !task.id) return;
+    if (task.stage === "done" || task.stage === "closed") return;
     const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
@@ -174,17 +177,37 @@ function App() {
         .then((d) => {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
-          setEmails(d.emails || []);
-          if (d.stage === "done") {
+          const incoming = d.emails || [];
+          setEmails((prev) =>
+            incoming.map((e) => ({
+              ...e,
+              status: pendingStatuses[e.id] || e.status,
+            })),
+          );
+          setPendingStatuses((prev) => {
+            const remaining = { ...prev };
+            incoming.forEach((e) => {
+              if (prev[e.id] && prev[e.id] === e.status) {
+                delete remaining[e.id];
+              }
+            });
+            return remaining;
+          });
+          if (d.stage === "done" || d.stage === "closed") {
             clearInterval(interval);
+            if (d.stage === "closed") {
+              setTask(null);
+              setEmails([]);
+            }
           }
         })
         .catch(() => {});
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [task?.id]);
+  }, [task?.id, task?.stage]);
 
   const updateStatus = (id, status) => {
+    setPendingStatuses((prev) => ({ ...prev, [id]: status }));
     fetch("/update-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -196,12 +219,16 @@ function App() {
         }
       })
       .catch(() => {});
-    setEmails(emails.map((e) => (e.id === id ? { ...e, status } : e)));
+    setEmails((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
   };
 
   const confirm = () => {
     const ids = emails.filter((e) => e.status === "spam").map((e) => e.id);
     setConfirming(true);
+    if (task) {
+      // CODEX: optimistic confirming stage
+      setTask({ ...task, stage: "confirming", progress: 0, total: ids.length });
+    }
     fetch("/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -212,11 +239,6 @@ function App() {
           alert("Failed to confirm spam");
           throw new Error("confirm");
         }
-      })
-      .then(() => {
-        // CODEX: Clear task data once confirmation closes it
-        setTask(null);
-        setEmails([]);
       })
       .catch(() => {})
       .finally(() => {
