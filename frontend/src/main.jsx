@@ -135,9 +135,17 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, days }),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) {
+          alert("Please link Gmail before scanning");
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
-        setTask({ id: data.task_id });
+        if (data) {
+          setTask({ id: data.task_id });
+        }
       });
   };
 

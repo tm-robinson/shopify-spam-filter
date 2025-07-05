@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect, g
 import os
 import json
 import logging
@@ -17,12 +17,36 @@ import time
 
 from dotenv import load_dotenv
 
+import database
+
 load_dotenv()  # take environment variables
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
 logger.setLevel(logging.INFO)
+
+# CODEX: Initialize database and manage user identity cookie
+database.init_db()
+
+
+@app.before_request
+def assign_user():
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        g.new_user = True
+    else:
+        g.new_user = False
+    g.user_id = user_id
+
+
+@app.after_request
+def set_user_cookie(resp):
+    if getattr(g, "new_user", False):
+        resp.set_cookie("user_id", g.user_id)
+    return resp
+
 
 # Paths for token and OpenRouter key
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
@@ -92,8 +116,8 @@ def oauth2callback():
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
-    with open(TOKEN_FILE, "w") as f:
-        f.write(creds.to_json())
+    # CODEX: Save token in the database linked to the user id
+    database.save_token(g.user_id, creds.to_json())
     return redirect(frontend)
 
 
@@ -104,13 +128,14 @@ def last_prompt():
 
 
 def get_credentials():
-    if not os.path.exists(TOKEN_FILE):
+    """Load OAuth credentials for the current user."""
+    token_json = database.load_token(g.user_id)
+    if not token_json:
         return None
     try:
-        with open(TOKEN_FILE) as f:
-            info = json.load(f)
+        info = json.loads(token_json)
         if "refresh_token" not in info:
-            logger.warning("token.json missing refresh_token")
+            logger.warning("token missing refresh_token")
             return None
         creds = Credentials.from_authorized_user_info(info, SCOPES)
         return creds
@@ -306,26 +331,44 @@ def scan_emails():
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
+        "user_id": g.user_id,
         "stage": "queued",
         "progress": 0,
         "total": 0,
         "emails": [],
         "log": [],
     }
+    database.save_task(
+        {
+            "id": task_id,
+            "user_id": g.user_id,
+            "stage": "queued",
+            "progress": 0,
+            "total": 0,
+            "emails": [],
+            "log": [],
+        }
+    )
     logger.info("Starting scan task %s for last %s days", task_id, days)
+
+    user_id = g.user_id
 
     def worker():
         try:
-            whitelist = set()
-            ignorelist = set()
+            whitelist = set(database.get_senders(user_id, "whitelist"))
+            ignorelist = set(database.get_senders(user_id, "ignore"))
+            spamlist = set(database.get_senders(user_id, "spam"))
+            confirmed_ids = set(database.get_confirmed_emails(user_id))
+
             service = build("gmail", "v1", credentials=creds)
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
             ignore_label = get_label_id(service, "spam-filter-ignore")
+            persist_label = get_label_id(service, "scan-persist")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
             tasks[task_id]["stage"] = "listing whitelist emails"
-            wmsgs = list_all_messages(service, q="label:whitelist")
+            wmsgs = list_all_messages(service, q="label:whitelist -label:scan-persist")
             tasks[task_id]["stage"] = "fetching whitelist emails"
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(wmsgs)
@@ -351,11 +394,19 @@ def scan_emails():
                         "",
                     )
                     whitelist.add(sender)
+                    database.save_sender(user_id, sender, "whitelist")
+                    service.users().messages().modify(
+                        userId="me",
+                        id=msg_id,
+                        body={"addLabelIds": [persist_label]},
+                    ).execute()
 
             # gather ignored senders
             logger.debug("Gmail request: list ignore emails")
             tasks[task_id]["stage"] = "listing ignore emails"
-            imsgs = list_all_messages(service, q="label:spam-filter-ignore")
+            imsgs = list_all_messages(
+                service, q="label:spam-filter-ignore -label:scan-persist"
+            )
             tasks[task_id]["stage"] = "fetching ignore emails"
             tasks[task_id]["progress"] = 0
             tasks[task_id]["total"] = len(imsgs)
@@ -381,6 +432,44 @@ def scan_emails():
                         "",
                     )
                     ignorelist.add(sender)
+                    database.save_sender(user_id, sender, "ignore")
+                    service.users().messages().modify(
+                        userId="me",
+                        id=msg_id,
+                        body={"addLabelIds": [persist_label]},
+                    ).execute()
+
+            # gather previously labelled spam senders
+            s_msgs = list_all_messages(
+                service, q="label:shopify-spam -label:scan-persist"
+            )
+            if s_msgs:
+                ids = [m["id"] for m in s_msgs]
+                details = batch_get_messages(
+                    service,
+                    ids,
+                    fmt="metadata",
+                    metadata_headers=["From"],
+                )
+                for msg_id in ids:
+                    md = details.get(msg_id)
+                    if not md:
+                        continue
+                    sender = next(
+                        (
+                            h["value"]
+                            for h in md["payload"]["headers"]
+                            if h["name"].lower() == "from"
+                        ),
+                        "",
+                    )
+                    spamlist.add(sender)
+                    database.save_sender(user_id, sender, "spam")
+                    service.users().messages().modify(
+                        userId="me",
+                        id=msg_id,
+                        body={"addLabelIds": [persist_label]},
+                    ).execute()
 
             tasks[task_id]["stage"] = "fetching"
 
@@ -438,13 +527,16 @@ def scan_emails():
                     status = "not_spam"
                     llm_sent = False
                     answer = ""
-                    if ignore_label in label_ids or sender in ignorelist:
+                    if (
+                        msg["id"] in confirmed_ids
+                        or sender in spamlist
+                        or spam_label in label_ids
+                    ):
+                        status = "spam"
+                    elif ignore_label in label_ids or sender in ignorelist:
                         status = "ignore"
                     elif whitelist_label in label_ids or sender in whitelist:
                         status = "whitelist"
-                    elif spam_label in label_ids:
-                        # dont reprocess emails that were previously labelled as spam
-                        status = "spam"
                     else:
                         if openrouter_key:
                             data = {
@@ -563,9 +655,12 @@ def scan_emails():
                             "llm_sent": llm_sent,
                         }
                     )
+                    database.save_email_status(user_id, msg["id"], status)
+                    database.save_task(tasks[task_id])
 
             tasks[task_id]["progress"] = tasks[task_id]["total"]
             tasks[task_id]["stage"] = "done"
+            database.save_task(tasks[task_id])
         except Exception:
             import traceback
 
@@ -586,11 +681,11 @@ def scan_status(task_id):
 # CODEX: Endpoint to list active scan tasks
 @app.route("/scan-tasks")
 def scan_tasks():
-    active = [
-        {"id": tid, **info}
-        for tid, info in tasks.items()
-        if info.get("stage") != "closed"
-    ]
+    db_tasks = {t["id"]: t for t in database.load_tasks(g.user_id)}
+    for tid, info in tasks.items():
+        if info.get("user_id") == g.user_id:
+            db_tasks[tid] = info
+    active = [t for t in db_tasks.values() if t.get("stage") != "closed"]
     return jsonify({"tasks": active})
 
 
@@ -603,6 +698,7 @@ def update_status():
     msg_id = request.json["id"]
     status = request.json["status"]
     spam_label = get_label_id(service, "shopify-spam")
+    persist_label = get_label_id(service, "scan-persist")
     whitelist_label = get_label_id(service, "whitelist")
     ignore_label = get_label_id(service, "spam-filter-ignore")
     logger.info("Update status request for %s -> %s", msg_id, status)
@@ -612,30 +708,66 @@ def update_status():
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [spam_label],
+                "addLabelIds": [spam_label, persist_label],
                 "removeLabelIds": [whitelist_label, ignore_label],
             },
         ).execute()
+        sender = next(
+            (
+                e["sender"]
+                for t in tasks.values()
+                for e in t.get("emails", [])
+                if e["id"] == msg_id
+            ),
+            "",
+        )
+        if sender:
+            database.save_sender(g.user_id, sender, "spam")
+        database.save_email_status(g.user_id, msg_id, "spam")
     elif status == "whitelist":
         logger.debug("Gmail request: add whitelist label to %s", msg_id)
         service.users().messages().modify(
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [whitelist_label],
+                "addLabelIds": [whitelist_label, persist_label],
                 "removeLabelIds": [spam_label, ignore_label],
             },
         ).execute()
+        sender = next(
+            (
+                e["sender"]
+                for t in tasks.values()
+                for e in t.get("emails", [])
+                if e["id"] == msg_id
+            ),
+            "",
+        )
+        if sender:
+            database.save_sender(g.user_id, sender, "whitelist")
+        database.save_email_status(g.user_id, msg_id, "whitelist")
     elif status == "ignore":
         logger.debug("Gmail request: add ignore label to %s", msg_id)
         service.users().messages().modify(
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [ignore_label],
+                "addLabelIds": [ignore_label, persist_label],
                 "removeLabelIds": [spam_label, whitelist_label],
             },
         ).execute()
+        sender = next(
+            (
+                e["sender"]
+                for t in tasks.values()
+                for e in t.get("emails", [])
+                if e["id"] == msg_id
+            ),
+            "",
+        )
+        if sender:
+            database.save_sender(g.user_id, sender, "ignore")
+        database.save_email_status(g.user_id, msg_id, "ignore")
     else:
         logger.debug(
             "Gmail request: clear spam/whitelist/ignore labels from %s", msg_id
@@ -645,6 +777,7 @@ def update_status():
             id=msg_id,
             body={"removeLabelIds": [spam_label, whitelist_label, ignore_label]},
         ).execute()
+        database.save_email_status(g.user_id, msg_id, status)
     update_task_email_status(msg_id, status)
     return ("", 204)
 
@@ -657,6 +790,7 @@ def confirm():
     service = build("gmail", "v1", credentials=creds)
     logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     spam_label = get_label_id(service, "shopify-spam")
+    persist_label = get_label_id(service, "scan-persist")
     ids = request.json.get("ids", [])
     task_id = request.json.get("task_id")
     for msg_id in ids:
@@ -699,11 +833,13 @@ def confirm():
                 userId="me",
                 id=msg_id,
                 body={
-                    "addLabelIds": [spam_label],
+                    "addLabelIds": [spam_label, persist_label],
                     "removeLabelIds": ["INBOX"],
                 },
             ).execute()
             update_task_email_status(msg_id, "spam")
+            database.save_sender(g.user_id, sender, "spam")
+            database.confirm_email(g.user_id, msg_id)
         except Exception:
             import traceback
 
@@ -711,6 +847,7 @@ def confirm():
     if task_id and task_id in tasks:
         # CODEX: Remove task so it no longer appears in active list
         tasks.pop(task_id, None)
+        database.delete_task(task_id)
     return ("", 204)
 
 
