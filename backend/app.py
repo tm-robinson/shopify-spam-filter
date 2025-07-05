@@ -17,7 +17,7 @@ import time
 
 from dotenv import load_dotenv
 
-from . import database
+import database
 
 load_dotenv()  # take environment variables
 
@@ -699,7 +699,6 @@ def update_status():
     persist_label = get_label_id(service, "scan-persist")
     whitelist_label = get_label_id(service, "whitelist")
     ignore_label = get_label_id(service, "spam-filter-ignore")
-    persist_label = get_label_id(service, "scan-persist")
     logger.info("Update status request for %s -> %s", msg_id, status)
     if status == "spam":
         logger.debug("Gmail request: add spam label to %s", msg_id)
@@ -789,6 +788,7 @@ def confirm():
     service = build("gmail", "v1", credentials=creds)
     logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
     spam_label = get_label_id(service, "shopify-spam")
+    persist_label = get_label_id(service, "scan-persist")
     ids = request.json.get("ids", [])
     task_id = request.json.get("task_id")
     for msg_id in ids:

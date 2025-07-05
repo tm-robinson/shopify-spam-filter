@@ -106,3 +106,4 @@
 - Added database module and schema for tokens, tasks, senders and email statuses.
 - Persist scan tasks and email classifications to SQLite.
 - Gmail labels updated with scan-persist once stored.
+- Fixed database import path and persist_label variable errors.
