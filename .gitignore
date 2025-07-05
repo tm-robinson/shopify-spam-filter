@@ -200,3 +200,4 @@ backend/last_prompt.json
 frontend/node_modules/
 frontend/dist/
 frontend/package-lock.json
+*.db

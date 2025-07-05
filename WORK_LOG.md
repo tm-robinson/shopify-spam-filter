@@ -102,3 +102,8 @@
 - Subject text over 50 characters now truncates with an ellipsis.
 - Gmail links open the Gmail app on mobile devices when available.
 - Added backlog entries for subject truncation and mobile Gmail app links.
+- Implemented multi-user support using cookie-based IDs and SQLite database.
+- Added database module and schema for tokens, tasks, senders and email statuses.
+- Persist scan tasks and email classifications to SQLite.
+- Gmail labels updated with scan-persist once stored.
+- Fixed database import path and persist_label variable errors.
