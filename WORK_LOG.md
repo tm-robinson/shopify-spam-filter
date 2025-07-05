@@ -71,7 +71,7 @@
 - Moved confirm button and controls to sticky header.
 - Removed chat window and added expandable LLM info per email.
 - Updated PROJECT_BACKLOG and stylesheets.
-
+  
 ## 1st July 2025
 
 - Configured backend to load OpenRouter key from env or file and removed save key endpoint.
