@@ -94,6 +94,24 @@
 
 - Clicking the sender or subject opens the Gmail message in a new tab. (TODO)
 
+#### User Story: Truncate long subject lines (TODO)
+
+**Description:** As a user, I want long subject text shortened in the email list so that it fits neatly on mobile screens.
+
+**Test Scenarios:**
+
+- Subjects longer than 50 characters display only the first 50 characters followed by `...`. (TODO)
+- Subjects 50 characters or shorter display in full. (TODO)
+
+#### User Story: Open Gmail app on mobile (TODO)
+
+**Description:** As a mobile user, I want clicking the sender or subject to launch the Gmail app if installed so viewing messages is smoother.
+
+**Test Scenarios:**
+
+- On phones, links open the Gmail app when available. (TODO)
+- On desktop browsers the link opens in a new tab. (TODO)
+
 #### User Story: Persist last used scan prompt (DONE)
 
 **Description:** As a user, I want the application to remember the last prompt I used when scanning emails so that it is pre-filled the next time I open the app.

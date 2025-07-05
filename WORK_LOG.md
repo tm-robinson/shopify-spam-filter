@@ -99,3 +99,6 @@
 - Adjusted action column layout on mobile so buttons wrap into two rows.
 - Documented new user story and updated backlog status.
 - Narrowed mobile action column so buttons show in 3x2 layout
+- Subject text over 50 characters now truncates with an ellipsis.
+- Gmail links open the Gmail app on mobile devices when available.
+- Added backlog entries for subject truncation and mobile Gmail app links.
