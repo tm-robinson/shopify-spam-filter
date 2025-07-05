@@ -836,68 +836,77 @@ def confirm():
     creds = get_credentials()
     if not creds:
         return jsonify({"error": "Not authenticated"}), 401
-    service = build("gmail", "v1", credentials=creds)
-    logger.info("Confirming %s messages as spam", len(request.json.get("ids", [])))
-    spam_label = get_label_id(service, "shopify-spam")
-    persist_label = get_label_id(service, "scan-persist")
     ids = request.json.get("ids", [])
     task_id = request.json.get("task_id")
-    for msg_id in ids:
-        logger.debug("Gmail request: get message %s for confirmation", msg_id)
-        msg = (
-            service.users()
-            .messages()
-            .get(
-                userId="me",
-                id=msg_id,
-                format="metadata",
-                metadataHeaders=["From"],
+
+    if task_id and task_id in tasks:
+        # CODEX: indicate confirmation progress
+        update_task(task_id, stage="confirming", progress=0, total=len(ids))
+
+    def worker():
+        service = build("gmail", "v1", credentials=creds)
+        spam_label = get_label_id(service, "shopify-spam")
+        persist_label = get_label_id(service, "scan-persist")
+        for idx, msg_id in enumerate(ids):
+            logger.debug("Gmail request: get message %s for confirmation", msg_id)
+            msg = (
+                service.users()
+                .messages()
+                .get(
+                    userId="me",
+                    id=msg_id,
+                    format="metadata",
+                    metadataHeaders=["From"],
+                )
+                .execute()
             )
-            .execute()
-        )
-        logger.debug("Gmail response: %s", msg)
-        sender = next(
-            (
-                h["value"]
-                for h in msg["payload"]["headers"]
-                if h["name"].lower() == "from"
-            ),
-            "",
-        )
-        # Add to block list
-        try:
-            logger.debug("Gmail request: create filter for %s", sender)
-            service.users().settings().filters().create(
-                userId="me",
-                body={
-                    "criteria": {"from": sender},
-                    "action": {
-                        "addLabelIds": [spam_label],
+            logger.debug("Gmail response: %s", msg)
+            sender = next(
+                (
+                    h["value"]
+                    for h in msg["payload"]["headers"]
+                    if h["name"].lower() == "from"
+                ),
+                "",
+            )
+            try:
+                logger.debug("Gmail request: create filter for %s", sender)
+                service.users().settings().filters().create(
+                    userId="me",
+                    body={
+                        "criteria": {"from": sender},
+                        "action": {
+                            "addLabelIds": [spam_label],
+                            "removeLabelIds": ["INBOX"],
+                        },
+                    },
+                ).execute()
+                logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+                service.users().messages().modify(
+                    userId="me",
+                    id=msg_id,
+                    body={
+                        "addLabelIds": [spam_label, persist_label],
                         "removeLabelIds": ["INBOX"],
                     },
-                },
-            ).execute()
-            logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-            service.users().messages().modify(
-                userId="me",
-                id=msg_id,
-                body={
-                    "addLabelIds": [spam_label, persist_label],
-                    "removeLabelIds": ["INBOX"],
-                },
-            ).execute()
-            update_task_email_status(msg_id, "spam")
-            database.save_sender(g.user_id, sender, "spam")
-            database.confirm_email(g.user_id, msg_id)
-        except Exception:
-            import traceback
+                ).execute()
+                update_task_email_status(msg_id, "spam")
+                database.save_sender(g.user_id, sender, "spam")
+                database.confirm_email(g.user_id, msg_id)
+            except Exception:
+                import traceback
 
-            logger.error(traceback.format_exc())
-    if task_id and task_id in tasks:
-        # CODEX: Remove task so it no longer appears in active list
-        tasks.pop(task_id, None)
-        database.delete_task(task_id)
-    return ("", 204)
+                logger.error(traceback.format_exc())
+            if task_id and task_id in tasks:
+                update_task(task_id, progress=idx + 1)
+
+        if task_id and task_id in tasks:
+            update_task(task_id, stage="closed", progress=len(ids))
+            tasks.pop(task_id, None)
+            database.delete_task(task_id)
+
+    threading.Thread(target=worker).start()
+    return ("", 202)
 
 
 if __name__ == "__main__":

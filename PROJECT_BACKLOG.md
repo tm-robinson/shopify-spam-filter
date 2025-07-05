@@ -214,12 +214,20 @@ labels remain accessible.
 - Linking Gmail with an address that already exists reuses the previous
   `user_id` cookie. (TODO)
 
-#### User Story: Detect active tasks across browsers (TODO)
+#### User Story: Detect active tasks across browsers (DONE)
 
 **Description:** As a user, I want the UI to automatically show progress for any running scan task started on another device or tab so that I don't have to start a new scan.
 
 **Test Scenarios:**
-- Opening the app on a second device while a scan is running begins polling automatically. (TODO)
+- Opening the app on a second device while a scan is running begins polling automatically. (DONE)
+
+#### User Story: Confirmation progress tracking (TODO)
+
+**Description:** As a user, I want the task to show a confirming stage with progress so I know how many emails are finalised when I click confirm.
+
+**Test Scenarios:**
+- Task stage switches to "confirming" when the confirm button is pressed. (TODO)
+- Progress increases as each email is confirmed. (TODO)
 
 #### User Story: Reset the database (TODO)
 

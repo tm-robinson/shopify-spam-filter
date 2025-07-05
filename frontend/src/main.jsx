@@ -129,24 +129,7 @@ function App() {
         }
       })
       .catch(() => {});
-
-    // CODEX: Poll for new scan tasks so progress shows across browsers
-    const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
-    const poll = setInterval(() => {
-      fetch("/scan-tasks")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (d && d.tasks && d.tasks.length > 0) {
-            const t = d.tasks[0];
-            setTask((prev) =>
-              prev && prev.id === t.id ? { ...prev, ...t } : { id: t.id, ...t },
-            );
-            setEmails(t.emails || []);
-          }
-        })
-        .catch(() => {});
-    }, intervalMs);
-    return () => clearInterval(poll);
+    // no continuous polling here; status polling starts once a task is active
   }, []);
 
   const linkGmail = () => {
@@ -179,6 +162,7 @@ function App() {
 
   useEffect(() => {
     if (!task || !task.id) return;
+    if (task.stage === "done" || task.stage === "closed") return;
     const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
@@ -193,14 +177,18 @@ function App() {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
           setEmails(d.emails || []);
-          if (d.stage === "done") {
+          if (d.stage === "done" || d.stage === "closed") {
             clearInterval(interval);
+            if (d.stage === "closed") {
+              setTask(null);
+              setEmails([]);
+            }
           }
         })
         .catch(() => {});
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [task?.id]);
+  }, [task?.id, task?.stage]);
 
   const updateStatus = (id, status) => {
     fetch("/update-status", {
@@ -220,6 +208,10 @@ function App() {
   const confirm = () => {
     const ids = emails.filter((e) => e.status === "spam").map((e) => e.id);
     setConfirming(true);
+    if (task) {
+      // CODEX: optimistic confirming stage
+      setTask({ ...task, stage: "confirming", progress: 0, total: ids.length });
+    }
     fetch("/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -230,11 +222,6 @@ function App() {
           alert("Failed to confirm spam");
           throw new Error("confirm");
         }
-      })
-      .then(() => {
-        // CODEX: Clear task data once confirmation closes it
-        setTask(null);
-        setEmails([]);
       })
       .catch(() => {})
       .finally(() => {
