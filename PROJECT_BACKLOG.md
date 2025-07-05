@@ -67,7 +67,7 @@
 - Page width fits on mobile screens. (DONE)
 - Layout expands on desktop screens for better readability. (DONE)
 - Default scan range is 3 days. (DONE)
-- Date and action columns use minimal width so the email column expands. (TODO)
+- Date and action columns use minimal width so the email column expands. (DONE)
 
 #### User Story: Backend config for API key and polling (TODO)
 
@@ -85,6 +85,14 @@
 **Test Scenarios:**
 
 - Clicking a filter button toggles visibility of that status. (TODO)
+
+#### User Story: Open Gmail messages from list (DONE)
+
+**Description:** As a user, I want to open the original Gmail message by clicking the sender or subject in the email list so that I can review it quickly.
+
+**Test Scenarios:**
+
+- Clicking the sender or subject opens the Gmail message in a new tab. (TODO)
 
 #### User Story: Persist last used scan prompt (DONE)
 

@@ -25,9 +25,16 @@ function EmailRow({ email, onStatus }) {
     <>
       <tr className={`status-${email.status}`}>
         <td className="email-cell">
-          <strong>{email.sender}</strong>
-          <br />
-          {email.subject}
+          <a
+            href={`https://mail.google.com/mail/u/0/#inbox/${email.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="gmail-link"
+          >
+            <strong>{email.sender}</strong>
+            <br />
+            {email.subject}
+          </a>
         </td>
         <td className="date-col">{formatDate(email.date)}</td>
         <td className="actions">
