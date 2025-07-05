@@ -203,3 +203,10 @@ reliably fetched.
 - Returning to the site preserves my Gmail link via cookie. (TODO)
 - Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed spam senders are not scanned again. (TODO)
+
+#### User Story: Reset the database (TODO)
+
+**Description:** As a developer, I want a simple script to clear the SQLite database so I can start fresh during testing.
+
+**Test Scenarios:**
+- Running `reset_db.sh` removes any existing data and recreates the schema. (TODO)
