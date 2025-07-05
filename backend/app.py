@@ -24,7 +24,7 @@ load_dotenv()  # take environment variables
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # CODEX: Initialize database and manage user identity cookie
 database.init_db()
