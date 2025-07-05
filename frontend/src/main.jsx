@@ -223,7 +223,7 @@ function App() {
   };
 
   const confirm = () => {
-    const ids = emails.filter((e) => e.status === "spam").map((e) => e.id);
+    const ids = emails.map((e) => e.id);
     setConfirming(true);
     if (task) {
       // CODEX: optimistic confirming stage
