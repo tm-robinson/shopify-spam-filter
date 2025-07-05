@@ -160,13 +160,13 @@ reliably fetched.
 - When some batch items fail with 429 errors, the helper retries until all
   messages are retrieved. (TODO)
 
-#### User Story: Resume active scan tasks (TODO)
+#### User Story: Resume active scan tasks (DONE)
 
 **Description:** As a user, I want the app to detect any running scan tasks when I reload the page so that I can continue watching progress without starting a new scan.
 
 **Test Scenarios:**
 
-- Reloading the page during a scan resumes polling and shows current progress. (TODO)
+- Reloading the page during a scan resumes polling and shows current progress. (DONE)
 
 #### User Story: Keep results after scan completes (TODO)
 
@@ -201,5 +201,5 @@ reliably fetched.
 
 **Test Scenarios:**
 - Returning to the site preserves my Gmail link via cookie. (TODO)
-- Scan tasks are loaded from the database on refresh. (TODO)
+- Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed spam senders are not scanned again. (TODO)
