@@ -516,9 +516,10 @@ def scan_emails():
 
             update_task(task_id, stage="fetching")
 
-            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
+            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox -label:scan-persist"
 
             messages = list_all_messages(service, q=query)
+            messages = [m for m in messages if m["id"] not in confirmed_ids]
 
             update_task(task_id, total=len(messages))
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
@@ -730,12 +731,17 @@ def scan_status(task_id):
 # CODEX: Endpoint to list active scan tasks
 @app.route("/scan-tasks")
 def scan_tasks():
-    db_tasks = {t["id"]: t for t in database.load_tasks(g.user_id)}
-    for tid, info in tasks.items():
-        if info.get("user_id") == g.user_id:
-            db_tasks[tid] = info
-    active = [t for t in db_tasks.values() if t.get("stage") != "closed"]
-    return jsonify({"tasks": active})
+    db_tasks = {
+        t["id"]: t for t in database.load_tasks(g.user_id) if t.get("stage") != "closed"
+    }
+    for tid, info in list(tasks.items()):
+        if info.get("user_id") != g.user_id:
+            continue
+        if info.get("stage") == "closed":
+            tasks.pop(tid, None)
+            continue
+        db_tasks[tid] = info
+    return jsonify({"tasks": list(db_tasks.values())})
 
 
 @app.route("/update-status", methods=["POST"])
@@ -843,60 +849,64 @@ def confirm():
         # CODEX: indicate confirmation progress
         update_task(task_id, stage="confirming", progress=0, total=len(ids))
 
+    user_id = g.user_id
+
     def worker():
         service = build("gmail", "v1", credentials=creds)
         spam_label = get_label_id(service, "shopify-spam")
         persist_label = get_label_id(service, "scan-persist")
         for idx, msg_id in enumerate(ids):
-            logger.debug("Gmail request: get message %s for confirmation", msg_id)
-            msg = (
-                service.users()
-                .messages()
-                .get(
-                    userId="me",
-                    id=msg_id,
-                    format="metadata",
-                    metadataHeaders=["From"],
+            status = database.get_email_status(user_id, msg_id) or "not_spam"
+            if status == "spam":
+                logger.debug("Gmail request: get message %s for confirmation", msg_id)
+                msg = (
+                    service.users()
+                    .messages()
+                    .get(
+                        userId="me",
+                        id=msg_id,
+                        format="metadata",
+                        metadataHeaders=["From"],
+                    )
+                    .execute()
                 )
-                .execute()
-            )
-            logger.debug("Gmail response: %s", msg)
-            sender = next(
-                (
-                    h["value"]
-                    for h in msg["payload"]["headers"]
-                    if h["name"].lower() == "from"
-                ),
-                "",
-            )
-            try:
-                logger.debug("Gmail request: create filter for %s", sender)
-                service.users().settings().filters().create(
-                    userId="me",
-                    body={
-                        "criteria": {"from": sender},
-                        "action": {
-                            "addLabelIds": [spam_label],
+                logger.debug("Gmail response: %s", msg)
+                sender = next(
+                    (
+                        h["value"]
+                        for h in msg["payload"]["headers"]
+                        if h["name"].lower() == "from"
+                    ),
+                    "",
+                )
+                try:
+                    logger.debug("Gmail request: create filter for %s", sender)
+                    service.users().settings().filters().create(
+                        userId="me",
+                        body={
+                            "criteria": {"from": sender},
+                            "action": {
+                                "addLabelIds": [spam_label],
+                                "removeLabelIds": ["INBOX"],
+                            },
+                        },
+                    ).execute()
+                    logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+                    service.users().messages().modify(
+                        userId="me",
+                        id=msg_id,
+                        body={
+                            "addLabelIds": [spam_label, persist_label],
                             "removeLabelIds": ["INBOX"],
                         },
-                    },
-                ).execute()
-                logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-                service.users().messages().modify(
-                    userId="me",
-                    id=msg_id,
-                    body={
-                        "addLabelIds": [spam_label, persist_label],
-                        "removeLabelIds": ["INBOX"],
-                    },
-                ).execute()
-                update_task_email_status(msg_id, "spam")
-                database.save_sender(g.user_id, sender, "spam")
-                database.confirm_email(g.user_id, msg_id)
-            except Exception:
-                import traceback
+                    ).execute()
+                    update_task_email_status(msg_id, "spam")
+                    database.save_sender(user_id, sender, "spam")
+                except Exception:
+                    import traceback
 
-                logger.error(traceback.format_exc())
+                    logger.error(traceback.format_exc())
+            database.confirm_email(user_id, msg_id)
             if task_id and task_id in tasks:
                 update_task(task_id, progress=idx + 1)
 

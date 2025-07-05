@@ -175,7 +175,7 @@ reliably fetched.
 **Test Scenarios:**
 
 - Reloading the page after a scan finishes still shows the results until I click confirm. (TODO)
-- Closed tasks are not returned when fetching active tasks. (TODO)
+- Closed tasks are not returned when fetching active tasks. (DONE)
 
 #### User Story: Persist manual status updates during scans (DONE)
 
@@ -202,7 +202,7 @@ reliably fetched.
 **Test Scenarios:**
 - Returning to the site preserves my Gmail link via cookie. (TODO)
 - Scan tasks are loaded from the database on refresh. (DONE)
-- Confirmed spam senders are not scanned again. (TODO)
+- Confirmed emails are not scanned again. (DONE)
 
 #### User Story: Recognise Gmail account across browsers (DONE)
 

@@ -159,3 +159,13 @@ def get_confirmed_emails(user_id: str):
             (user_id,),
         ).fetchall()
         return [r["email_id"] for r in rows]
+
+
+def get_email_status(user_id: str, email_id: str):
+    """Return stored status for a specific email id."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT status FROM email_status WHERE user_id = ? AND email_id = ?",
+            (user_id, email_id),
+        ).fetchone()
+        return row["status"] if row else None
