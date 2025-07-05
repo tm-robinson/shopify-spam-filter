@@ -2,49 +2,77 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./App.css";
 
+const DEFAULT_POLL_INTERVAL = Number(import.meta.env.VITE_POLL_INTERVAL || 1);
+
 const DEFAULT_PROMPT =
   "Identify shopify abandoned basket emails, or emails from US companies that mention dollar prices or a US postal address.";
 
-function ChatBubble({ role, content }) {
-  const clean = content.replace(/<\/?RESULT>/gi, "");
-  const [expanded, setExpanded] = useState(false);
-  const sentences = clean.split(/(?<=[.!?])\s+/);
-  const preview = sentences.slice(0, 3).join(" ");
-  const isLong = sentences.length > 3;
-  const display = expanded || !isLong ? clean : preview;
-
-  let extraClass = "";
-  if (role === "assistant") {
-    if (content.toLowerCase().includes("<result>yes")) {
-      extraClass = " yes";
-    } else if (content.toLowerCase().includes("<result>no")) {
-      extraClass = " no";
-    }
-  }
+function EmailRow({ email, onStatus }) {
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen(!open);
 
   return (
-    <div
-      className={`chat-bubble ${role === "assistant" ? "right" : "left"}${extraClass}`}
-    >
-      {display}
-      {isLong && (
-        <span className="read-more" onClick={() => setExpanded(!expanded)}>
-          {expanded ? " Read less" : " ... Read more"}
-        </span>
+    <>
+      <tr className={`status-${email.status}`}>
+        <td>{email.sender}</td>
+        <td>{email.subject}</td>
+        <td>{email.date}</td>
+        <td className="actions">
+          <button
+            className="info-btn"
+            disabled={!email.llm_sent}
+            onClick={toggle}
+          >
+            i
+          </button>
+          <button
+            className={`whitelist ${email.status === "whitelist" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "whitelist")}
+          >
+            W
+          </button>
+          <button
+            className={`ignore ${email.status === "ignore" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "ignore")}
+          >
+            I
+          </button>
+          <button
+            className={`spam ${email.status === "spam" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "spam")}
+          >
+            !
+          </button>
+          <button
+            className={`not-spam ${email.status === "not_spam" ? "active" : ""}`}
+            onClick={() => onStatus(email.id, "not_spam")}
+          >
+            ✓
+          </button>
+        </td>
+      </tr>
+      {open && (
+        <tr className="llm-details">
+          <td colSpan="4">
+            <pre className="llm-request">{email.request}</pre>
+            <pre className="llm-response">{email.response}</pre>
+          </td>
+        </tr>
       )}
-    </div>
+    </>
   );
 }
 
 function App() {
-  const [apiKey, setApiKey] = useState("");
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
-  const [chatLog, setChatLog] = useState([]);
-  const [days, setDays] = useState(10);
+  const [days, setDays] = useState(3);
   const [task, setTask] = useState(null);
-  const [pollInterval, setPollInterval] = useState(1); // seconds
   const [confirming, setConfirming] = useState(false);
+  const [showSpam, setShowSpam] = useState(true);
+  const [showNotSpam, setShowNotSpam] = useState(true);
+  const [showWhitelist, setShowWhitelist] = useState(true);
+  const [showIgnore, setShowIgnore] = useState(true);
 
   useEffect(() => {
     fetch("/last-prompt")
@@ -64,8 +92,6 @@ function App() {
           const t = d.tasks[0];
           setTask({ id: t.id, ...t });
           setEmails(t.emails || []);
-          setChatLog(t.log || []);
-          setPollInterval(1);
         }
       })
       .catch(() => {});
@@ -73,14 +99,6 @@ function App() {
 
   const linkGmail = () => {
     window.location.href = "/auth";
-  };
-
-  const saveKey = () => {
-    fetch("/openrouter-key", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: apiKey }),
-    });
   };
 
   const scan = () => {
@@ -97,7 +115,7 @@ function App() {
 
   useEffect(() => {
     if (!task || !task.id) return;
-    const intervalMs = pollInterval * 1000;
+    const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
     const interval = setInterval(() => {
       fetch(`/scan-status/${task.id}`)
         .then((r) => r.json())
@@ -105,14 +123,13 @@ function App() {
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
           setEmails(d.emails);
-          setChatLog(d.log);
           if (d.stage === "done") {
             clearInterval(interval);
           }
         });
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [task?.id, pollInterval]);
+  }, [task?.id]);
 
   const updateStatus = (id, status) => {
     fetch("/update-status", {
@@ -143,17 +160,8 @@ function App() {
 
   return (
     <div className="container">
-      <div className="main">
-        <h1>Shopify Spam Filter</h1>
+      <header className="header">
         <button onClick={linkGmail}>Link Gmail</button>
-        <div>
-          <input
-            placeholder="OpenRouter API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          <button onClick={saveKey}>Save Key</button>
-        </div>
         <div>
           <textarea
             value={prompt}
@@ -172,15 +180,6 @@ function App() {
             onChange={(e) => setDays(e.target.value)}
           />
         </div>
-        <div>
-          <label>Poll Interval (s): </label>
-          <input
-            type="number"
-            min="1"
-            value={pollInterval}
-            onChange={(e) => setPollInterval(parseInt(e.target.value, 10) || 1)}
-          />
-        </div>
         <button onClick={scan}>Scan Emails</button>
         {task && task.stage !== "done" && (
           <div className="progress">
@@ -190,6 +189,37 @@ function App() {
             <progress value={task.progress} max={task.total || 1}></progress>
           </div>
         )}
+        <button onClick={confirm} disabled={confirming}>
+          {confirming ? "Confirming..." : "Confirm"}
+        </button>
+      </header>
+      <div className="filters">
+        <button
+          className={showSpam ? "active" : ""}
+          onClick={() => setShowSpam(!showSpam)}
+        >
+          Spam
+        </button>
+        <button
+          className={showNotSpam ? "active" : ""}
+          onClick={() => setShowNotSpam(!showNotSpam)}
+        >
+          Not Spam
+        </button>
+        <button
+          className={showWhitelist ? "active" : ""}
+          onClick={() => setShowWhitelist(!showWhitelist)}
+        >
+          Whitelist
+        </button>
+        <button
+          className={showIgnore ? "active" : ""}
+          onClick={() => setShowIgnore(!showIgnore)}
+        >
+          Ignore
+        </button>
+      </div>
+      <div className="email-list">
         <table>
           <thead>
             <tr>
@@ -200,51 +230,19 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {emails.map((e) => (
-              <tr key={e.id} className={`status-${e.status}`}>
-                <td>{e.sender}</td>
-                <td>{e.subject}</td>
-                <td>{e.date}</td>
-                <td>
-                  <button
-                    className={`spam ${e.status === "spam" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "spam")}
-                  >
-                    Spam
-                  </button>
-                  <button
-                    className={`not-spam ${e.status === "not_spam" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "not_spam")}
-                  >
-                    Not Spam
-                  </button>
-                  <button
-                    className={`whitelist ${e.status === "whitelist" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "whitelist")}
-                  >
-                    Whitelist
-                  </button>
-                  <button
-                    className={`ignore ${e.status === "ignore" ? "active" : ""}`}
-                    onClick={() => updateStatus(e.id, "ignore")}
-                  >
-                    Ignore
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {emails
+              .filter(
+                (e) =>
+                  (showSpam || e.status !== "spam") &&
+                  (showNotSpam || e.status !== "not_spam") &&
+                  (showWhitelist || e.status !== "whitelist") &&
+                  (showIgnore || e.status !== "ignore"),
+              )
+              .map((e) => (
+                <EmailRow key={e.id} email={e} onStatus={updateStatus} />
+              ))}
           </tbody>
         </table>
-        <button onClick={confirm} disabled={confirming}>
-          {confirming ? "Confirming..." : "Confirm Choices"}
-        </button>
-      </div>
-      <div className="chat-log">
-        {chatLog
-          .filter((c) => c.role !== "system")
-          .map((c, i) => (
-            <ChatBubble key={i} role={c.role} content={c.content} />
-          ))}
       </div>
     </div>
   );
