@@ -71,7 +71,7 @@
 - Moved confirm button and controls to sticky header.
 - Removed chat window and added expandable LLM info per email.
 - Updated PROJECT_BACKLOG and stylesheets.
-  
+
 ## 1st July 2025
 
 - Configured backend to load OpenRouter key from env or file and removed save key endpoint.
@@ -92,8 +92,10 @@
 - Made date column narrow and fixed action column width
 - Email list padding removed to save space
 - Updated backlog for completed UI scenarios
+
 ## 5th July 2025
 
 - Added Gmail deeplink to sender and subject text in email list.
 - Adjusted action column layout on mobile so buttons wrap into two rows.
 - Documented new user story and updated backlog status.
+- Narrowed mobile action column so buttons show in 3x2 layout

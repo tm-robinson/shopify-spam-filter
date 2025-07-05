@@ -68,7 +68,7 @@ td.actions {
 @media (max-width: 600px) {
   th.actions,
   td.actions {
-    width: 110px; /* CODEX: narrower actions column on mobile */
+    width: 80px; /* CODEX: even narrower actions column for 3x2 layout */
   }
   td.actions {
     display: flex;
