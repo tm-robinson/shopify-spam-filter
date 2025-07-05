@@ -129,6 +129,24 @@ function App() {
         }
       })
       .catch(() => {});
+
+    // CODEX: Poll for new scan tasks so progress shows across browsers
+    const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
+    const poll = setInterval(() => {
+      fetch("/scan-tasks")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && d.tasks && d.tasks.length > 0) {
+            const t = d.tasks[0];
+            setTask((prev) =>
+              prev && prev.id === t.id ? { ...prev, ...t } : { id: t.id, ...t },
+            );
+            setEmails(t.emails || []);
+          }
+        })
+        .catch(() => {});
+    }, intervalMs);
+    return () => clearInterval(poll);
   }, []);
 
   const linkGmail = () => {

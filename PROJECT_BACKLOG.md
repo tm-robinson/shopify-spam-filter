@@ -204,7 +204,7 @@ reliably fetched.
 - Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed spam senders are not scanned again. (TODO)
 
-#### User Story: Recognise Gmail account across browsers (TODO)
+#### User Story: Recognise Gmail account across browsers (DONE)
 
 **Description:** As a user, I want linking Gmail from a new browser to restore
 my existing account by matching the Gmail address so that my saved tasks and
@@ -213,6 +213,13 @@ labels remain accessible.
 **Test Scenarios:**
 - Linking Gmail with an address that already exists reuses the previous
   `user_id` cookie. (TODO)
+
+#### User Story: Detect active tasks across browsers (TODO)
+
+**Description:** As a user, I want the UI to automatically show progress for any running scan task started on another device or tab so that I don't have to start a new scan.
+
+**Test Scenarios:**
+- Opening the app on a second device while a scan is running begins polling automatically. (TODO)
 
 #### User Story: Reset the database (TODO)
 

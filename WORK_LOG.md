@@ -121,3 +121,5 @@
 - OAuth callback now checks for existing gmail_users entry and reuses the user ID if found.
 - Updated database module with helpers to save and lookup Gmail addresses.
 - Documented new user story for recognising Gmail accounts across browsers.
+- Frontend now polls /scan-tasks every second to detect tasks started on other devices.
+- Marked Gmail account recognition user story as DONE and documented new user story for cross-browser task detection.
