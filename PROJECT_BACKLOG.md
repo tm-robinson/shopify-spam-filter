@@ -204,6 +204,16 @@ reliably fetched.
 - Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed spam senders are not scanned again. (TODO)
 
+#### User Story: Recognise Gmail account across browsers (TODO)
+
+**Description:** As a user, I want linking Gmail from a new browser to restore
+my existing account by matching the Gmail address so that my saved tasks and
+labels remain accessible.
+
+**Test Scenarios:**
+- Linking Gmail with an address that already exists reuses the previous
+  `user_id` cookie. (TODO)
+
 #### User Story: Reset the database (TODO)
 
 **Description:** As a developer, I want a simple script to clear the SQLite database so I can start fresh during testing.

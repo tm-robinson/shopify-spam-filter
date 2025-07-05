@@ -140,6 +140,15 @@ def oauth2callback():
     )
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
+    # CODEX: Determine Gmail address and reuse user id if already known
+    service = build("gmail", "v1", credentials=creds)
+    profile = service.users().getProfile(userId="me").execute()
+    email = profile.get("emailAddress")
+    existing = database.get_user_id_for_email(email)
+    if existing and existing != g.user_id:
+        g.user_id = existing
+        g.new_user = True
+    database.save_user_email(g.user_id, email)
     # CODEX: Save token in the database linked to the user id
     database.save_token(g.user_id, creds.to_json())
     return redirect(frontend)

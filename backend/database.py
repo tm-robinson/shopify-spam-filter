@@ -38,6 +38,26 @@ def load_token(user_id: str):
         return row["token"] if row else None
 
 
+def save_user_email(user_id: str, email: str) -> None:
+    """Store mapping of Gmail address to user id."""
+    with get_connection() as conn:
+        conn.execute(
+            "REPLACE INTO gmail_users (email, user_id) VALUES (?, ?)",
+            (email, user_id),
+        )
+        conn.commit()
+
+
+def get_user_id_for_email(email: str):
+    """Return user id associated with the given Gmail address."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT user_id FROM gmail_users WHERE email = ?",
+            (email,),
+        ).fetchone()
+        return row["user_id"] if row else None
+
+
 def save_task(task: dict) -> None:
     with get_connection() as conn:
         conn.execute(

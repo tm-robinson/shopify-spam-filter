@@ -114,3 +114,10 @@
 - Updated backlog status for resuming active scan tasks.
 - Created reset_db.sh script to wipe and reinitialize SQLite database.
 - Added detailed debug logging for task stages and Gmail API calls. Updated task progress in the database during scans.
+
+### Additional 5th July 2025
+
+- Added gmail_users table to map email addresses to user IDs.
+- OAuth callback now checks for existing gmail_users entry and reuses the user ID if found.
+- Updated database module with helpers to save and lookup Gmail addresses.
+- Documented new user story for recognising Gmail accounts across browsers.
