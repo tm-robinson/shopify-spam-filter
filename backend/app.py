@@ -370,6 +370,7 @@ def scan_emails():
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
+        "id": task_id,
         "user_id": g.user_id,
         "stage": "queued",
         "progress": 0,
@@ -748,17 +749,20 @@ def scan_status(task_id):
 # CODEX: Endpoint to list active scan tasks
 @app.route("/scan-tasks")
 def scan_tasks():
-    db_tasks = {
-        t["id"]: t for t in database.load_tasks(g.user_id) if t.get("stage") != "closed"
-    }
-    for tid, info in list(tasks.items()):
-        if info.get("user_id") != g.user_id:
-            continue
-        if info.get("stage") == "closed":
-            tasks.pop(tid, None)
-            continue
-        db_tasks[tid] = info
-    return jsonify({"tasks": list(db_tasks.values())})
+    """Return the latest active task for the current user."""
+    active = [
+        info
+        for info in tasks.values()
+        if info.get("user_id") == g.user_id and info.get("stage") != "closed"
+    ]
+    if active:
+        return jsonify({"tasks": [active[-1]]})
+
+    db_task = database.load_latest_task(g.user_id)
+    if db_task:
+        tasks[db_task["id"]] = db_task
+        return jsonify({"tasks": [db_task]})
+    return jsonify({"tasks": []})
 
 
 @app.route("/update-status", methods=["POST"])

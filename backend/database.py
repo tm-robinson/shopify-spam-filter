@@ -100,6 +100,7 @@ def load_tasks(user_id: str):
             result.append(
                 {
                     "id": r["id"],
+                    "user_id": r["user_id"],
                     "stage": r["stage"],
                     "progress": r["progress"],
                     "total": r["total"],
@@ -108,6 +109,26 @@ def load_tasks(user_id: str):
                 }
             )
         return result
+
+
+def load_latest_task(user_id: str):
+    """Return the most recent task that is not closed."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM tasks WHERE user_id = ? AND stage != 'closed' ORDER BY rowid DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "stage": row["stage"],
+            "progress": row["progress"],
+            "total": row["total"],
+            "emails": json.loads(row["emails_json"] or "[]"),
+            "log": json.loads(row["log_json"] or "[]"),
+        }
 
 
 def delete_task(task_id: str) -> None:
