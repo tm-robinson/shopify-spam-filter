@@ -32,5 +32,9 @@ CREATE TABLE IF NOT EXISTS email_status (
     email_id TEXT NOT NULL,
     status TEXT NOT NULL,
     confirmed INTEGER DEFAULT 0,
+    subject TEXT,
+    sender TEXT,
+    date TEXT,
+    filter_created INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, email_id)
 );

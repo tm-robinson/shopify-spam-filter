@@ -516,12 +516,20 @@ def scan_emails():
 
             update_task(task_id, stage="fetching")
 
+            existing_unconfirmed = database.get_unconfirmed_emails(user_id, date_after)
+            tasks[task_id]["emails"].extend(existing_unconfirmed)
+            skip_ids = set(e["id"] for e in existing_unconfirmed).union(confirmed_ids)
+            update_task(
+                task_id,
+                progress=len(existing_unconfirmed),
+            )
+
             query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox -label:scan-persist"
 
             messages = list_all_messages(service, q=query)
-            messages = [m for m in messages if m["id"] not in confirmed_ids]
+            messages = [m for m in messages if m["id"] not in skip_ids]
 
-            update_task(task_id, total=len(messages))
+            update_task(task_id, total=len(messages) + len(existing_unconfirmed))
             logger.info("messages length is currently %d ", tasks[task_id]["total"])
             openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
             if not openrouter_key and os.path.exists(OPENROUTER_KEY_FILE):
@@ -541,7 +549,11 @@ def scan_emails():
 
                 for offset, msg in enumerate(msg_batch):
                     idx = start + offset
-                    update_task(task_id, stage="processing", progress=idx)
+                    update_task(
+                        task_id,
+                        stage="processing",
+                        progress=len(existing_unconfirmed) + idx,
+                    )
                     msg_detail = msg_details.get(msg["id"])
                     if not msg_detail:
                         logger.error("No details returned for %s", msg["id"])
@@ -698,7 +710,14 @@ def scan_emails():
                             "llm_sent": llm_sent,
                         }
                     )
-                    database.save_email_status(user_id, msg["id"], status)
+                    database.save_email_status(
+                        user_id,
+                        msg["id"],
+                        status,
+                        subject=subject,
+                        sender=sender,
+                        date=date,
+                    )
                     database.save_task(tasks[task_id])
 
             update_task(
@@ -880,32 +899,39 @@ def confirm():
                     "",
                 )
                 try:
-                    logger.debug("Gmail request: create filter for %s", sender)
-                    service.users().settings().filters().create(
-                        userId="me",
-                        body={
-                            "criteria": {"from": sender},
-                            "action": {
-                                "addLabelIds": [spam_label],
-                                "removeLabelIds": ["INBOX"],
+                    if not database.has_filter_for_sender(user_id, sender):
+                        logger.debug("Gmail request: create filter for %s", sender)
+                        service.users().settings().filters().create(
+                            userId="me",
+                            body={
+                                "criteria": {"from": sender},
+                                "action": {
+                                    "addLabelIds": [spam_label],
+                                    "removeLabelIds": ["INBOX"],
+                                },
                             },
-                        },
-                    ).execute()
-                    logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg_id,
-                        body={
-                            "addLabelIds": [spam_label, persist_label],
-                            "removeLabelIds": ["INBOX"],
-                        },
-                    ).execute()
-                    update_task_email_status(msg_id, "spam")
-                    database.save_sender(user_id, sender, "spam")
-                except Exception:
-                    import traceback
+                        ).execute()
+                        database.set_filter_created(user_id, msg_id)
+                    else:
+                        database.set_filter_created(user_id, msg_id)
+                except Exception as e:
+                    if "already exists" in str(e).lower():
+                        database.set_filter_created(user_id, msg_id)
+                    else:
+                        import traceback
 
-                    logger.error(traceback.format_exc())
+                        logger.error(traceback.format_exc())
+                logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+                service.users().messages().modify(
+                    userId="me",
+                    id=msg_id,
+                    body={
+                        "addLabelIds": [spam_label, persist_label],
+                        "removeLabelIds": ["INBOX"],
+                    },
+                ).execute()
+                update_task_email_status(msg_id, "spam")
+                database.save_sender(user_id, sender, "spam")
             database.confirm_email(user_id, msg_id)
             if task_id and task_id in tasks:
                 update_task(task_id, progress=idx + 1)
