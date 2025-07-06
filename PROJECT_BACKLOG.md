@@ -176,6 +176,7 @@ reliably fetched.
 
 - Reloading the page after a scan finishes still shows the results until I click confirm. (TODO)
 - Closed tasks are not returned when fetching active tasks. (DONE)
+- Only the most recent active task is returned when fetching active tasks. (DONE)
 
 #### User Story: Persist manual status updates during scans (DONE)
 

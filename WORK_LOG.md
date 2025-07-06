@@ -143,3 +143,8 @@
 - Added new user story about reusing unconfirmed email data.
 - Removed `scan-persist` Gmail label and store scanned IDs in database.
 - Fixed timezone handling in `get_unconfirmed_emails` to prevent runtime errors.
+## 7th July 2025
+
+- Fixed tasks table to update existing rows by storing task id in memory.
+- Added database helper to load the latest active task and updated /scan-tasks to return only that task.
+- Updated backlog with scenario for latest active task filtering.
