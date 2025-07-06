@@ -142,3 +142,4 @@
 - Confirm process checks for existing filters, handles "already exists" errors and updates the new `filter_created` flag.
 - Added new user story about reusing unconfirmed email data.
 - Removed `scan-persist` Gmail label and store scanned IDs in database.
+- Fixed timezone handling in `get_unconfirmed_emails` to prevent runtime errors.
