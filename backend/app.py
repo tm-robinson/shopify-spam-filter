@@ -402,11 +402,10 @@ def scan_emails():
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
             ignore_label = get_label_id(service, "spam-filter-ignore")
-            persist_label = get_label_id(service, "scan-persist")
             # gather whitelisted senders
             logger.debug("Gmail request: list whitelist emails")
             update_task(task_id, stage="listing whitelist emails")
-            wmsgs = list_all_messages(service, q="label:whitelist -label:scan-persist")
+            wmsgs = list_all_messages(service, q="label:whitelist")
             update_task(
                 task_id, stage="fetching whitelist emails", progress=0, total=len(wmsgs)
             )
@@ -433,18 +432,17 @@ def scan_emails():
                     )
                     whitelist.add(sender)
                     database.save_sender(user_id, sender, "whitelist")
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg_id,
-                        body={"addLabelIds": [persist_label]},
-                    ).execute()
+                    database.save_email_status(
+                        user_id,
+                        msg_id,
+                        "whitelist",
+                        confirmed=True,
+                    )
 
             # gather ignored senders
             logger.debug("Gmail request: list ignore emails")
             update_task(task_id, stage="listing ignore emails")
-            imsgs = list_all_messages(
-                service, q="label:spam-filter-ignore -label:scan-persist"
-            )
+            imsgs = list_all_messages(service, q="label:spam-filter-ignore")
             update_task(
                 task_id, stage="fetching ignore emails", progress=0, total=len(imsgs)
             )
@@ -471,17 +469,16 @@ def scan_emails():
                     )
                     ignorelist.add(sender)
                     database.save_sender(user_id, sender, "ignore")
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg_id,
-                        body={"addLabelIds": [persist_label]},
-                    ).execute()
+                    database.save_email_status(
+                        user_id,
+                        msg_id,
+                        "ignore",
+                        confirmed=True,
+                    )
 
             # gather previously labelled spam senders
             update_task(task_id, stage="listing spam emails")
-            s_msgs = list_all_messages(
-                service, q="label:shopify-spam -label:scan-persist"
-            )
+            s_msgs = list_all_messages(service, q="label:shopify-spam")
             if s_msgs:
                 ids = [m["id"] for m in s_msgs]
                 details = batch_get_messages(
@@ -507,11 +504,12 @@ def scan_emails():
                     )
                     spamlist.add(sender)
                     database.save_sender(user_id, sender, "spam")
-                    service.users().messages().modify(
-                        userId="me",
-                        id=msg_id,
-                        body={"addLabelIds": [persist_label]},
-                    ).execute()
+                    database.save_email_status(
+                        user_id,
+                        msg_id,
+                        "spam",
+                        confirmed=True,
+                    )
                     update_task(task_id, progress=tasks[task_id]["progress"] + 1)
 
             update_task(task_id, stage="fetching")
@@ -524,7 +522,7 @@ def scan_emails():
                 progress=len(existing_unconfirmed),
             )
 
-            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox -label:scan-persist"
+            query = f"after:{date_after.strftime('%Y-%m-%d')} in:inbox is:unread label:inbox"
 
             messages = list_all_messages(service, q=query)
             messages = [m for m in messages if m["id"] not in skip_ids]
@@ -772,7 +770,6 @@ def update_status():
     msg_id = request.json["id"]
     status = request.json["status"]
     spam_label = get_label_id(service, "shopify-spam")
-    persist_label = get_label_id(service, "scan-persist")
     whitelist_label = get_label_id(service, "whitelist")
     ignore_label = get_label_id(service, "spam-filter-ignore")
     logger.info("Update status request for %s -> %s", msg_id, status)
@@ -782,7 +779,7 @@ def update_status():
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [spam_label, persist_label],
+                "addLabelIds": [spam_label],
                 "removeLabelIds": [whitelist_label, ignore_label],
             },
         ).execute()
@@ -804,7 +801,7 @@ def update_status():
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [whitelist_label, persist_label],
+                "addLabelIds": [whitelist_label],
                 "removeLabelIds": [spam_label, ignore_label],
             },
         ).execute()
@@ -826,7 +823,7 @@ def update_status():
             userId="me",
             id=msg_id,
             body={
-                "addLabelIds": [ignore_label, persist_label],
+                "addLabelIds": [ignore_label],
                 "removeLabelIds": [spam_label, whitelist_label],
             },
         ).execute()
@@ -873,7 +870,6 @@ def confirm():
     def worker():
         service = build("gmail", "v1", credentials=creds)
         spam_label = get_label_id(service, "shopify-spam")
-        persist_label = get_label_id(service, "scan-persist")
         for idx, msg_id in enumerate(ids):
             status = database.get_email_status(user_id, msg_id) or "not_spam"
             if status == "spam":
@@ -926,7 +922,7 @@ def confirm():
                     userId="me",
                     id=msg_id,
                     body={
-                        "addLabelIds": [spam_label, persist_label],
+                        "addLabelIds": [spam_label],
                         "removeLabelIds": ["INBOX"],
                     },
                 ).execute()

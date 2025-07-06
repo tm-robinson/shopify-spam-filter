@@ -158,7 +158,10 @@ def save_email_status(
             if filter_created is None:
                 filter_created = row["filter_created"]
         conn.execute(
-            "REPLACE INTO email_status (user_id, email_id, status, confirmed, subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "REPLACE INTO email_status (user_id, email_id, status, confirmed, "
+                "subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
             (
                 user_id,
                 email_id,
@@ -218,13 +221,21 @@ def get_unconfirmed_emails(user_id: str, after: datetime.datetime):
             "SELECT * FROM email_status WHERE user_id = ? AND confirmed = 0",
             (user_id,),
         ).fetchall()
+    if after.tzinfo is not None:
+        after_cmp = after.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    else:
+        after_cmp = after
+
     emails = []
     for r in rows:
         try:
             r_dt = parsedate_to_datetime(r["date"])
+            if r_dt and r_dt.tzinfo is not None:
+                r_dt = r_dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
         except Exception:
             r_dt = None
-        if r_dt and r_dt >= after:
+
+        if r_dt and r_dt >= after_cmp:
             emails.append(
                 {
                     "id": r["email_id"],
