@@ -134,3 +134,10 @@
 - /scan-tasks no longer returns closed tasks.
 - Updated backlog scenarios for closed task filtering and confirmed email handling.
 - Fixed confirm worker to store user_id before starting thread.
+
+## 6th July 2025
+
+- Extended `email_status` table to store subject, sender, date and whether a spam filter exists.
+- Scan worker now loads unconfirmed emails from the database for the chosen date range and skips rescanning them.
+- Confirm process checks for existing filters, handles "already exists" errors and updates the new `filter_created` flag.
+- Added new user story about reusing unconfirmed email data.

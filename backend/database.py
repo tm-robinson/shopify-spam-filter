@@ -1,6 +1,8 @@
 import os
 import json
 import sqlite3
+import datetime
+from email.utils import parsedate_to_datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
@@ -133,12 +135,40 @@ def get_senders(user_id: str, status: str):
 
 
 def save_email_status(
-    user_id: str, email_id: str, status: str, confirmed: bool = False
+    user_id: str,
+    email_id: str,
+    status: str,
+    *,
+    confirmed: bool = False,
+    subject: str | None = None,
+    sender: str | None = None,
+    date: str | None = None,
+    filter_created: bool | None = None,
 ) -> None:
+    """Insert or update email status details."""
     with get_connection() as conn:
+        row = conn.execute(
+            "SELECT subject, sender, date, filter_created FROM email_status WHERE user_id = ? AND email_id = ?",
+            (user_id, email_id),
+        ).fetchone()
+        if row:
+            subject = subject if subject is not None else row["subject"]
+            sender = sender if sender is not None else row["sender"]
+            date = date if date is not None else row["date"]
+            if filter_created is None:
+                filter_created = row["filter_created"]
         conn.execute(
-            "REPLACE INTO email_status (user_id, email_id, status, confirmed) VALUES (?, ?, ?, ?)",
-            (user_id, email_id, status, int(confirmed)),
+            "REPLACE INTO email_status (user_id, email_id, status, confirmed, subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                user_id,
+                email_id,
+                status,
+                int(confirmed),
+                subject,
+                sender,
+                date,
+                int(filter_created or 0),
+            ),
         )
         conn.commit()
 
@@ -152,6 +182,26 @@ def confirm_email(user_id: str, email_id: str) -> None:
         conn.commit()
 
 
+def set_filter_created(user_id: str, email_id: str) -> None:
+    """Mark an email's filter as created."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE email_status SET filter_created = 1 WHERE user_id = ? AND email_id = ?",
+            (user_id, email_id),
+        )
+        conn.commit()
+
+
+def has_filter_for_sender(user_id: str, sender: str) -> bool:
+    """Return True if any email from this sender has a filter created."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM email_status WHERE user_id = ? AND sender = ? AND filter_created = 1 LIMIT 1",
+            (user_id, sender),
+        ).fetchone()
+        return bool(row)
+
+
 def get_confirmed_emails(user_id: str):
     with get_connection() as conn:
         rows = conn.execute(
@@ -159,6 +209,36 @@ def get_confirmed_emails(user_id: str):
             (user_id,),
         ).fetchall()
         return [r["email_id"] for r in rows]
+
+
+def get_unconfirmed_emails(user_id: str, after: datetime.datetime):
+    """Return emails not yet confirmed that were received on or after the given date."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM email_status WHERE user_id = ? AND confirmed = 0",
+            (user_id,),
+        ).fetchall()
+    emails = []
+    for r in rows:
+        try:
+            r_dt = parsedate_to_datetime(r["date"])
+        except Exception:
+            r_dt = None
+        if r_dt and r_dt >= after:
+            emails.append(
+                {
+                    "id": r["email_id"],
+                    "subject": r["subject"] or "",
+                    "sender": r["sender"] or "",
+                    "date": r["date"] or "",
+                    "status": r["status"],
+                    "request": "",
+                    "response": "",
+                    "llm_sent": False,
+                    "filter_created": bool(r["filter_created"]),
+                }
+            )
+    return emails
 
 
 def get_email_status(user_id: str, email_id: str):
