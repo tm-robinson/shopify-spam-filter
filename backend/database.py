@@ -158,7 +158,10 @@ def save_email_status(
             if filter_created is None:
                 filter_created = row["filter_created"]
         conn.execute(
-            "REPLACE INTO email_status (user_id, email_id, status, confirmed, subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "REPLACE INTO email_status (user_id, email_id, status, confirmed, "
+                "subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
             (
                 user_id,
                 email_id,

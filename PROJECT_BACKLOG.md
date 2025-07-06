@@ -253,3 +253,12 @@ labels remain accessible.
 - Scanning with a date range that overlaps previous scans lists those unconfirmed emails. (TODO)
 - Creating a filter that already exists marks the email as having the filter created. (TODO)
 
+#### User Story: Track scanned emails in the database (DONE)
+
+**Description:** As a developer, I want scanned email IDs stored in the database instead of applying the `scan-persist` Gmail label so the inbox view remains clean.
+
+**Test Scenarios:**
+
+- Scanning emails does not add the `scan-persist` label. (TODO)
+- Emails already stored in `email_status` are skipped on subsequent scans. (TODO)
+
