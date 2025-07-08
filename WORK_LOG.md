@@ -150,3 +150,10 @@
 - Updated backlog with scenario for latest active task filtering.
 - Frontend now continues polling when an active task is found on load and stops cleanly when tasks are closed.
 - Status polling now kicks off immediately when an active task is loaded.
+
+## 8th July 2025
+
+- Added `refresh-senders` endpoint to fetch whitelist, spam and ignore senders in a separate task.
+- Scan task now uses stored sender lists without re-downloading.
+- Frontend gained a "Refresh Lists" button to trigger the new task.
+- Documented new user story for refreshing sender lists.

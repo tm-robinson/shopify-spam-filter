@@ -263,3 +263,11 @@ labels remain accessible.
 - Scanning emails does not add the `scan-persist` label. (TODO)
 - Emails already stored in `email_status` are skipped on subsequent scans. (TODO)
 
+#### User Story: Refresh sender lists on demand (TODO)
+
+**Description:** As a user, I want to refresh my whitelist, spam and ignore sender lists manually so regular scans are faster.
+
+**Test Scenarios:**
+- Clicking the "Refresh Lists" button starts a background task. (TODO)
+- Scanning emails no longer re-fetches these lists from Gmail. (TODO)
+
