@@ -355,16 +355,26 @@ def extract_email_body(payload):
 
 
 def fetch_label_senders(
-    service, user_id, query, status, task_id, list_stage, fetch_stage
+    service,
+    user_id,
+    query,
+    status,
+    task_id,
+    list_stage,
+    fetch_stage,
+    existing_ids=None,
 ):
     """Fetch senders for a Gmail label and store them."""
     logger.debug("Gmail request: list %s", status)
     update_task(task_id, stage=list_stage)
     msgs = list_all_messages(service, q=query)
-    update_task(task_id, stage=fetch_stage, progress=0, total=len(msgs))
-    if not msgs:
-        return
     ids = [m["id"] for m in msgs]
+    if existing_ids:
+        # CODEX: Skip messages already stored in the database
+        ids = [i for i in ids if i not in existing_ids]
+    update_task(task_id, stage=fetch_stage, progress=0, total=len(ids))
+    if not ids:
+        return
     details = batch_get_messages(
         service, ids, fmt="metadata", metadata_headers=["From"]
     )
@@ -711,6 +721,7 @@ def refresh_senders():
     def worker():
         try:
             service = build("gmail", "v1", credentials=creds)
+            existing = set(database.get_all_email_ids(user_id))
             fetch_label_senders(
                 service,
                 user_id,
@@ -719,6 +730,7 @@ def refresh_senders():
                 task_id,
                 "listing whitelist emails",
                 "fetching whitelist emails",
+                existing,
             )
             fetch_label_senders(
                 service,
@@ -728,6 +740,7 @@ def refresh_senders():
                 task_id,
                 "listing ignore emails",
                 "fetching ignore emails",
+                existing,
             )
             fetch_label_senders(
                 service,
@@ -737,6 +750,7 @@ def refresh_senders():
                 task_id,
                 "listing spam emails",
                 "fetching spam emails",
+                existing,
             )
         except Exception:
             import traceback

@@ -157,3 +157,4 @@
 - Scan task now uses stored sender lists without re-downloading.
 - Frontend gained a "Refresh Lists" button to trigger the new task.
 - Documented new user story for refreshing sender lists.
+- Added database helper to list all email IDs and skipped them when refreshing sender lists.
