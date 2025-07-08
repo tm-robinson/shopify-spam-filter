@@ -165,9 +165,17 @@ function App() {
     if (!task || !task.id) return;
     if (task.stage === "done" || task.stage === "closed") return;
     const intervalMs = DEFAULT_POLL_INTERVAL * 1000;
-    const interval = setInterval(() => {
+    let interval;
+    const fetchStatus = () => {
       fetch(`/scan-status/${task.id}`)
         .then((r) => {
+          if (r.status === 404) {
+            // CODEX: stop polling when the task no longer exists
+            clearInterval(interval);
+            setTask(null);
+            setEmails([]);
+            return null;
+          }
           if (!r.ok) {
             alert("Failed to fetch scan status");
             throw new Error("status");
@@ -175,6 +183,7 @@ function App() {
           return r.json();
         })
         .then((d) => {
+          if (!d) return;
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
           const incoming = d.emails || [];
@@ -202,7 +211,10 @@ function App() {
           }
         })
         .catch(() => {});
-    }, intervalMs);
+    };
+    // CODEX: immediately check status on load
+    fetchStatus();
+    interval = setInterval(fetchStatus, intervalMs);
     return () => clearInterval(interval);
   }, [task?.id, task?.stage]);
 

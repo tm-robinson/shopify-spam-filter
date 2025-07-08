@@ -148,3 +148,5 @@
 - Fixed tasks table to update existing rows by storing task id in memory.
 - Added database helper to load the latest active task and updated /scan-tasks to return only that task.
 - Updated backlog with scenario for latest active task filtering.
+- Frontend now continues polling when an active task is found on load and stops cleanly when tasks are closed.
+- Status polling now kicks off immediately when an active task is loaded.
