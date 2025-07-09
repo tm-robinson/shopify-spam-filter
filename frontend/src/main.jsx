@@ -102,11 +102,22 @@ function App() {
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
-  const isMobileApp = /Android|iPhone|iPad/i.test(navigator.userAgent); // CODEX: detect mobile devices
-  // CODEX: open Gmail app on mobile or fall back to the web
-  const whitelistUrl = isMobileApp
-    ? "googlegmail:///search?query=label%3Awhitelist"
-    : "https://mail.google.com/mail/u/0/#search/label:whitelist";
+  // CODEX: open Gmail whitelist search; Android uses the Gmail app
+  const openWhitelist = () => {
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const query = encodeURIComponent("label:whitelist");
+    const androidIntent =
+      `intent://mail.google.com/mail/u/0/#search/${query}` +
+      `#Intent;scheme=https;package=com.google.android.gm;end`;
+    const webUrl = `https://mail.google.com/mail/u/0/#search/${query}`;
+
+    if (isAndroid) {
+      window.location = androidIntent;
+    } else {
+      window.location = webUrl;
+    }
+  };
 
   useEffect(() => {
     fetch("/last-prompt")
@@ -292,12 +303,7 @@ function App() {
     <div className="container">
       <header className="header">
         <button onClick={linkGmail}>Link Gmail</button>
-        <a
-          href={whitelistUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="gmail-link"
-        >
+        <a href="#" onClick={openWhitelist} className="gmail-link">
           View Whitelist
         </a>
         <div>
