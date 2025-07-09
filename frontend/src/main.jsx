@@ -20,10 +20,8 @@ function formatDate(str) {
 function EmailRow({ email, onStatus }) {
   const [open, setOpen] = useState(false);
   const toggle = () => setOpen(!open);
-  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent); // CODEX: detect mobile devices
-  const gmailUrl = isMobile
-    ? `googlegmail://mail/u/0/#inbox/${email.id}` // CODEX: open Gmail app on mobile
-    : `https://mail.google.com/mail/u/0/#inbox/${email.id}`;
+  // CODEX: open Gmail message in web client for all platforms
+  const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${email.id}`;
   const truncatedSubject =
     email.subject.length > 50
       ? `${email.subject.slice(0, 50)}...`
@@ -102,21 +100,11 @@ function App() {
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
-  // CODEX: open Gmail whitelist search; Android uses the Gmail app
+  // CODEX: open Gmail whitelist search in the web client
   const openWhitelist = () => {
-    const ua = navigator.userAgent;
-    const isAndroid = /Android/i.test(ua);
     const query = encodeURIComponent("label:whitelist");
-    const androidIntent =
-      `intent://mail.google.com/mail/u/0/#search/${query}` +
-      `#Intent;scheme=https;package=com.google.android.gm;end`;
     const webUrl = `https://mail.google.com/mail/u/0/#search/${query}`;
-
-    if (isAndroid) {
-      window.location = androidIntent;
-    } else {
-      window.location = webUrl;
-    }
+    window.location = webUrl;
   };
 
   useEffect(() => {

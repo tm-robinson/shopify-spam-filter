@@ -172,3 +172,5 @@
 - Simplified whitelist search URL for better mobile compatibility and marked the user story as done.
 - Updated whitelist link to open the Gmail app on mobile using the googlegmail protocol.
 - Updated whitelist search link to use an Android intent and fall back to the Gmail web client on iOS and desktop.
+- Reverted all Gmail links to open the web client regardless of platform.
+- Updated backlog to reflect web-only Gmail links.
