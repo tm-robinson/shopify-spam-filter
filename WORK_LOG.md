@@ -167,3 +167,5 @@
 - Documented new user story for task-based button visibility.
 - Fixed refresh button visibility so no buttons show during a refresh task.
 - Marked the action button visibility user story as done.
+- Added Gmail whitelist search link in the header.
+- Documented new user story for whitelist search.

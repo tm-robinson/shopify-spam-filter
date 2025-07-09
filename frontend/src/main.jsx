@@ -102,6 +102,10 @@ function App() {
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent); // CODEX: detect mobile for whitelist link
+  const whitelistUrl = isMobile
+    ? "googlegmail://mail/u/0/#search/label:whitelist" // CODEX: open Gmail app search on mobile
+    : "https://mail.google.com/mail/u/0/#search/label:whitelist";
 
   useEffect(() => {
     fetch("/last-prompt")
@@ -287,6 +291,14 @@ function App() {
     <div className="container">
       <header className="header">
         <button onClick={linkGmail}>Link Gmail</button>
+        <a
+          href={whitelistUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="gmail-link"
+        >
+          View Whitelist
+        </a>
         <div>
           <textarea
             className="prompt-input"
