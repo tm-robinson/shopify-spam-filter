@@ -278,6 +278,10 @@ function App() {
       });
   };
 
+  const isRefreshTask =
+    task && /whitelist|spam emails|ignore emails/i.test(task.stage || "");
+  const isScanningTask = task && !isRefreshTask;
+
   return (
     <div className="container">
       <header className="header">
@@ -301,8 +305,10 @@ function App() {
             onChange={(e) => setDays(e.target.value)}
           />
         </div>
-        <button onClick={scan}>Scan Emails</button>
-        <button onClick={refreshLists}>Refresh Lists</button>
+        {!task && <button onClick={scan}>Scan Emails</button>}
+        {!isScanningTask && (
+          <button onClick={refreshLists}>Refresh Lists</button>
+        )}
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>
@@ -311,9 +317,11 @@ function App() {
             <progress value={task.progress} max={task.total || 1}></progress>
           </div>
         )}
-        <button onClick={confirm} disabled={confirming}>
-          {confirming ? "Confirming..." : "Confirm"}
-        </button>
+        {task && task.stage === "done" && !isRefreshTask && (
+          <button onClick={confirm} disabled={confirming}>
+            {confirming ? "Confirming..." : "Confirm"}
+          </button>
+        )}
       </header>
       <div className="filters">
         <button

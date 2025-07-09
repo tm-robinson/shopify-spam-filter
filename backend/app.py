@@ -392,7 +392,7 @@ def fetch_label_senders(
             "",
         )
         database.save_sender(user_id, sender, status)
-        #database.save_email_status(user_id, msg_id, status, confirmed=True)
+        # database.save_email_status(user_id, msg_id, status, confirmed=True)
 
 
 @app.route("/scan-emails", methods=["POST"])
@@ -418,6 +418,7 @@ def scan_emails():
         "total": 0,
         "emails": [],
         "log": [],
+        "kind": "scan",
     }
     database.save_task(
         {
@@ -428,6 +429,7 @@ def scan_emails():
             "total": 0,
             "emails": [],
             "log": [],
+            "kind": "scan",
         }
     )
     logger.info("Starting scan task %s for last %s days", task_id, days)
@@ -713,6 +715,7 @@ def refresh_senders():
         "total": 0,
         "emails": [],
         "log": [],
+        "kind": "refresh",
     }
     database.save_task(tasks[task_id])
 
