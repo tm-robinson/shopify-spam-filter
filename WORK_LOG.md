@@ -170,3 +170,4 @@
 - Added Gmail whitelist search link in the header.
 - Documented new user story for whitelist search.
 - Simplified whitelist search URL for better mobile compatibility and marked the user story as done.
+- Updated whitelist link to open the Gmail app on mobile using the googlegmail protocol.

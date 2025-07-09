@@ -294,5 +294,5 @@ labels remain accessible.
 **Description:** As a user, I want a direct link in the app header that opens Gmail with all whitelisted emails so I can review them quickly.
 
 **Test Scenarios:**
-- Clicking the link opens Gmail showing `label:whitelist` results. (DONE)
+- Clicking the link opens Gmail showing `label:whitelist` results on desktop and mobile. (DONE)
 

@@ -102,9 +102,11 @@ function App() {
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
-  // CODEX: use a universal Gmail search URL so mobile apps handle it correctly
-  const whitelistUrl =
-    "https://mail.google.com/mail/u/0/#search/label:whitelist";
+  const isMobileApp = /Android|iPhone|iPad/i.test(navigator.userAgent); // CODEX: detect mobile devices
+  // CODEX: open Gmail app on mobile or fall back to the web
+  const whitelistUrl = isMobileApp
+    ? "googlegmail:///search?query=label%3Awhitelist"
+    : "https://mail.google.com/mail/u/0/#search/label:whitelist";
 
   useEffect(() => {
     fetch("/last-prompt")
