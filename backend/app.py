@@ -392,7 +392,7 @@ def fetch_label_senders(
             "",
         )
         database.save_sender(user_id, sender, status)
-        database.save_email_status(user_id, msg_id, status, confirmed=True)
+        #database.save_email_status(user_id, msg_id, status, confirmed=True)
 
 
 @app.route("/scan-emails", methods=["POST"])

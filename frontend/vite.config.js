@@ -66,6 +66,12 @@ export default defineConfig({
         secure: false,
         agent: httpsAgent,
       },
+      "/refresh-senders": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
     },
   },
 });
