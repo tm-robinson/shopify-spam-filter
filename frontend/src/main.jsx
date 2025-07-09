@@ -281,6 +281,7 @@ function App() {
   const isRefreshTask =
     task && /whitelist|spam emails|ignore emails/i.test(task.stage || "");
   const isScanningTask = task && !isRefreshTask;
+  const noActiveTask = !task || task.stage === "closed";
 
   return (
     <div className="container">
@@ -305,10 +306,8 @@ function App() {
             onChange={(e) => setDays(e.target.value)}
           />
         </div>
-        {!task && <button onClick={scan}>Scan Emails</button>}
-        {!isScanningTask && (
-          <button onClick={refreshLists}>Refresh Lists</button>
-        )}
+        {noActiveTask && <button onClick={scan}>Scan Emails</button>}
+        {noActiveTask && <button onClick={refreshLists}>Refresh Lists</button>}
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>

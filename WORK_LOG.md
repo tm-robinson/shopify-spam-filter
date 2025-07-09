@@ -165,3 +165,5 @@
 - Frontend buttons now hide or show based on task state.
 - Backend loads latest task kind by inspecting stage text.
 - Documented new user story for task-based button visibility.
+- Fixed refresh button visibility so no buttons show during a refresh task.
+- Marked the action button visibility user story as done.
