@@ -278,3 +278,14 @@ labels remain accessible.
 **Test Scenarios:**
 - Email IDs already in `email_status` are not fetched again from Gmail. (TODO)
 
+#### User Story: Action buttons depend on task state (DONE)
+
+**Description:** As a user, I want the scan, confirm and refresh buttons to appear only when it makes sense so I don't start conflicting tasks.
+
+**Test Scenarios:**
+- Confirm button only shows when the latest task is done. (TODO)
+- Scan Emails button hides if any task is running. (TODO)
+- Refresh Lists button hides during a scan task. (TODO)
+- Scan Emails and Confirm hide during a refresh task. (TODO)
+- Refresh Lists button hides during a refresh task. (TODO)
+

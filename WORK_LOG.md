@@ -158,3 +158,12 @@
 - Frontend gained a "Refresh Lists" button to trigger the new task.
 - Documented new user story for refreshing sender lists.
 - Added database helper to list all email IDs and skipped them when refreshing sender lists.
+
+## 9th July 2025
+
+- Added kind field for tasks in memory to distinguish scan and refresh operations.
+- Frontend buttons now hide or show based on task state.
+- Backend loads latest task kind by inspecting stage text.
+- Documented new user story for task-based button visibility.
+- Fixed refresh button visibility so no buttons show during a refresh task.
+- Marked the action button visibility user story as done.

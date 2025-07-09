@@ -2,6 +2,7 @@ import os
 import json
 import sqlite3
 import datetime
+import re
 from email.utils import parsedate_to_datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
@@ -120,7 +121,7 @@ def load_latest_task(user_id: str):
         ).fetchone()
         if not row:
             return None
-        return {
+        task = {
             "id": row["id"],
             "user_id": row["user_id"],
             "stage": row["stage"],
@@ -129,6 +130,11 @@ def load_latest_task(user_id: str):
             "emails": json.loads(row["emails_json"] or "[]"),
             "log": json.loads(row["log_json"] or "[]"),
         }
+        if re.search(r"whitelist|spam emails|ignore emails", task["stage"], re.I):
+            task["kind"] = "refresh"
+        else:
+            task["kind"] = "scan"
+        return task
 
 
 def delete_task(task_id: str) -> None:
