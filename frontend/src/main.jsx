@@ -161,6 +161,26 @@ function App() {
       });
   };
 
+  const refreshLists = () => {
+    fetch("/refresh-senders", { method: "POST" })
+      .then((r) => {
+        if (r.status === 401) {
+          alert("Please link Gmail before refreshing");
+          return null;
+        }
+        if (!r.ok) {
+          alert("Failed to refresh lists");
+          throw new Error("refresh");
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (data) {
+          setTask({ id: data.task_id });
+        }
+      });
+  };
+
   useEffect(() => {
     if (!task || !task.id) return;
     if (task.stage === "done" || task.stage === "closed") return;
@@ -282,6 +302,7 @@ function App() {
           />
         </div>
         <button onClick={scan}>Scan Emails</button>
+        <button onClick={refreshLists}>Refresh Lists</button>
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>

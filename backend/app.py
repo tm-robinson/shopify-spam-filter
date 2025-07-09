@@ -354,6 +354,47 @@ def extract_email_body(payload):
     return "", ""
 
 
+def fetch_label_senders(
+    service,
+    user_id,
+    query,
+    status,
+    task_id,
+    list_stage,
+    fetch_stage,
+    existing_ids=None,
+):
+    """Fetch senders for a Gmail label and store them."""
+    logger.debug("Gmail request: list %s", status)
+    update_task(task_id, stage=list_stage)
+    msgs = list_all_messages(service, q=query)
+    ids = [m["id"] for m in msgs]
+    if existing_ids:
+        # CODEX: Skip messages already stored in the database
+        ids = [i for i in ids if i not in existing_ids]
+    update_task(task_id, stage=fetch_stage, progress=0, total=len(ids))
+    if not ids:
+        return
+    details = batch_get_messages(
+        service, ids, fmt="metadata", metadata_headers=["From"]
+    )
+    for idx, msg_id in enumerate(ids):
+        update_task(task_id, progress=idx + 1)
+        md = details.get(msg_id)
+        if not md:
+            continue
+        sender = next(
+            (
+                h["value"]
+                for h in md["payload"]["headers"]
+                if h["name"].lower() == "from"
+            ),
+            "",
+        )
+        database.save_sender(user_id, sender, status)
+        #database.save_email_status(user_id, msg_id, status, confirmed=True)
+
+
 @app.route("/scan-emails", methods=["POST"])
 def scan_emails():
     """Start a background scan task and return its id"""
@@ -403,116 +444,7 @@ def scan_emails():
             spam_label = get_label_id(service, "shopify-spam")
             whitelist_label = get_label_id(service, "whitelist")
             ignore_label = get_label_id(service, "spam-filter-ignore")
-            # gather whitelisted senders
-            logger.debug("Gmail request: list whitelist emails")
-            update_task(task_id, stage="listing whitelist emails")
-            wmsgs = list_all_messages(service, q="label:whitelist")
-            update_task(
-                task_id, stage="fetching whitelist emails", progress=0, total=len(wmsgs)
-            )
-            if wmsgs:
-                ids = [m["id"] for m in wmsgs]
-                details = batch_get_messages(
-                    service,
-                    ids,
-                    fmt="metadata",
-                    metadata_headers=["From"],
-                )
-                for idx, msg_id in enumerate(ids):
-                    update_task(task_id, progress=idx + 1)
-                    md = details.get(msg_id)
-                    if not md:
-                        continue
-                    sender = next(
-                        (
-                            h["value"]
-                            for h in md["payload"]["headers"]
-                            if h["name"].lower() == "from"
-                        ),
-                        "",
-                    )
-                    whitelist.add(sender)
-                    database.save_sender(user_id, sender, "whitelist")
-                    database.save_email_status(
-                        user_id,
-                        msg_id,
-                        "whitelist",
-                        confirmed=True,
-                    )
-
-            # gather ignored senders
-            logger.debug("Gmail request: list ignore emails")
-            update_task(task_id, stage="listing ignore emails")
-            imsgs = list_all_messages(service, q="label:spam-filter-ignore")
-            update_task(
-                task_id, stage="fetching ignore emails", progress=0, total=len(imsgs)
-            )
-            if imsgs:
-                ids = [m["id"] for m in imsgs]
-                details = batch_get_messages(
-                    service,
-                    ids,
-                    fmt="metadata",
-                    metadata_headers=["From"],
-                )
-                for idx, msg_id in enumerate(ids):
-                    update_task(task_id, progress=idx + 1)
-                    md = details.get(msg_id)
-                    if not md:
-                        continue
-                    sender = next(
-                        (
-                            h["value"]
-                            for h in md["payload"]["headers"]
-                            if h["name"].lower() == "from"
-                        ),
-                        "",
-                    )
-                    ignorelist.add(sender)
-                    database.save_sender(user_id, sender, "ignore")
-                    database.save_email_status(
-                        user_id,
-                        msg_id,
-                        "ignore",
-                        confirmed=True,
-                    )
-
-            # gather previously labelled spam senders
-            update_task(task_id, stage="listing spam emails")
-            s_msgs = list_all_messages(service, q="label:shopify-spam")
-            if s_msgs:
-                ids = [m["id"] for m in s_msgs]
-                details = batch_get_messages(
-                    service,
-                    ids,
-                    fmt="metadata",
-                    metadata_headers=["From"],
-                )
-                update_task(
-                    task_id, stage="fetching spam emails", progress=0, total=len(ids)
-                )
-                for msg_id in ids:
-                    md = details.get(msg_id)
-                    if not md:
-                        continue
-                    sender = next(
-                        (
-                            h["value"]
-                            for h in md["payload"]["headers"]
-                            if h["name"].lower() == "from"
-                        ),
-                        "",
-                    )
-                    spamlist.add(sender)
-                    database.save_sender(user_id, sender, "spam")
-                    database.save_email_status(
-                        user_id,
-                        msg_id,
-                        "spam",
-                        confirmed=True,
-                    )
-                    update_task(task_id, progress=tasks[task_id]["progress"] + 1)
-
+            # CODEX: sender lists are fetched separately so skip downloading them here
             update_task(task_id, stage="fetching")
 
             existing_unconfirmed = database.get_unconfirmed_emails(user_id, date_after)
@@ -763,6 +695,74 @@ def scan_tasks():
         tasks[db_task["id"]] = db_task
         return jsonify({"tasks": [db_task]})
     return jsonify({"tasks": []})
+
+
+@app.route("/refresh-senders", methods=["POST"])
+def refresh_senders():
+    """Fetch whitelist, ignore and spam senders in a background task."""
+    creds = get_credentials()
+    if not creds:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    task_id = str(uuid.uuid4())
+    tasks[task_id] = {
+        "id": task_id,
+        "user_id": g.user_id,
+        "stage": "queued",
+        "progress": 0,
+        "total": 0,
+        "emails": [],
+        "log": [],
+    }
+    database.save_task(tasks[task_id])
+
+    user_id = g.user_id
+
+    def worker():
+        try:
+            service = build("gmail", "v1", credentials=creds)
+            existing = set(database.get_all_email_ids(user_id))
+            fetch_label_senders(
+                service,
+                user_id,
+                "label:whitelist",
+                "whitelist",
+                task_id,
+                "listing whitelist emails",
+                "fetching whitelist emails",
+                existing,
+            )
+            fetch_label_senders(
+                service,
+                user_id,
+                "label:spam-filter-ignore",
+                "ignore",
+                task_id,
+                "listing ignore emails",
+                "fetching ignore emails",
+                existing,
+            )
+            fetch_label_senders(
+                service,
+                user_id,
+                "label:shopify-spam",
+                "spam",
+                task_id,
+                "listing spam emails",
+                "fetching spam emails",
+                existing,
+            )
+        except Exception:
+            import traceback
+
+            logger.error(traceback.format_exc())
+        finally:
+            update_task(task_id, stage="closed")
+            tasks.pop(task_id, None)
+            database.delete_task(task_id)
+
+    threading.Thread(target=worker).start()
+    return jsonify({"task_id": task_id})
 
 
 @app.route("/update-status", methods=["POST"])

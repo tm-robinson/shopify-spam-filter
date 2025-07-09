@@ -281,3 +281,13 @@ def get_email_status(user_id: str, email_id: str):
             (user_id, email_id),
         ).fetchone()
         return row["status"] if row else None
+
+
+def get_all_email_ids(user_id: str):
+    """Return all email ids stored for this user."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT email_id FROM email_status WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        return [r["email_id"] for r in rows]
