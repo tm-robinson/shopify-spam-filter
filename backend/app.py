@@ -451,8 +451,13 @@ def scan_emails():
             update_task(task_id, stage="fetching")
 
             existing_unconfirmed = database.get_unconfirmed_emails(user_id, date_after)
-            tasks[task_id]["emails"].extend(existing_unconfirmed)
-            skip_ids = set(e["id"] for e in existing_unconfirmed).union(confirmed_ids)
+            # CODEX: avoid adding the same email twice if status polling ran before the worker
+            known_ids = {e["id"] for e in tasks[task_id].get("emails", [])}
+            fresh = [e for e in existing_unconfirmed if e["id"] not in known_ids]
+            tasks[task_id]["emails"].extend(fresh)
+            skip_ids = set(e["id"] for e in tasks[task_id]["emails"]).union(
+                confirmed_ids
+            )
             update_task(
                 task_id,
                 progress=len(existing_unconfirmed),
@@ -689,6 +694,11 @@ def scan_status(task_id):
         for email in existing:
             if email["id"] not in known:
                 task.setdefault("emails", []).append(email)
+        # CODEX: remove any accidental duplicates in the task email list
+        unique = {}
+        for email in task.get("emails", []):
+            unique[email["id"]] = email
+        task["emails"] = list(unique.values())
 
         # CODEX: Sort emails by date so reused entries are merged in order
         def _email_dt(email):

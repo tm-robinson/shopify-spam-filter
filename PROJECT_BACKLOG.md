@@ -261,6 +261,13 @@ labels remain accessible.
 **Test Scenarios:**
 - Emails returned from `/scan-status/<id>` are ordered by their received date regardless of when they were scanned. (DONE)
 
+#### User Story: Prevent duplicate scan results (DONE)
+
+**Description:** As a user, I want each email to appear only once in the list even when data comes from both the current scan and the database.
+
+**Test Scenarios:**
+- `/scan-status/<id>` never returns the same email id twice. (DONE)
+
 #### User Story: Track scanned emails in the database (DONE)
 
 **Description:** As a developer, I want scanned email IDs stored in the database instead of applying the `scan-persist` Gmail label so the inbox view remains clean.
