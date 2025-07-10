@@ -180,3 +180,4 @@
 - Added unconfirmed emails from database to /scan-status results.
 - Sorted scan status emails by date to mix old and new results correctly.
 - Deduplicated unconfirmed emails during scans and in scan status results (Prevent duplicate scan results).
+- Added sender management page with backend APIs to list and reset senders.

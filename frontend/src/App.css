@@ -158,6 +158,13 @@ button.ignore {
   height: 24px;
   padding: 0;
 }
+.trash-btn {
+  background: #eee;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
 .progress {
   margin: 10px 0;
 }

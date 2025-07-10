@@ -310,3 +310,13 @@ labels remain accessible.
 **Test Scenarios:**
 - Clicking the link opens Gmail showing `label:whitelist` results in the web client on any platform. (TODO)
 
+#### User Story: Manage sender list (TODO)
+
+**Description:** As a user, I want to view and remove senders flagged as whitelist, spam or ignore so I can correct mistakes.
+
+**Test Scenarios:**
+
+- Manage page lists senders for each status. (TODO)
+- Filter buttons show only whitelist, spam or ignore senders. (TODO)
+- Clicking the trashcan removes the sender and unconfirms related emails. (TODO)
+

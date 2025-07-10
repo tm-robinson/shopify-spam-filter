@@ -984,5 +984,22 @@ def confirm():
     return ("", 202)
 
 
+@app.route("/senders")
+def list_senders():
+    """Return list of senders and their status."""
+    senders = database.list_senders(g.user_id)
+    return jsonify({"senders": senders})
+
+
+@app.route("/reset-sender", methods=["POST"])
+def reset_sender():
+    """Remove a sender from spam/whitelist/ignore lists."""
+    sender = request.json.get("sender")
+    if not sender:
+        return jsonify({"error": "missing sender"}), 400
+    database.clear_sender(g.user_id, sender)
+    return ("", 204)
+
+
 if __name__ == "__main__":
     app.run(debug=True, ssl_context="adhoc")

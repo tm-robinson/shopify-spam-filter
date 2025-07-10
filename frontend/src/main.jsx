@@ -89,11 +89,99 @@ function EmailRow({ email, onStatus }) {
   );
 }
 
+function ManageSenders({ onClose }) {
+  const [senders, setSenders] = useState([]);
+  const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    fetch("/senders")
+      .then((r) => r.json())
+      .then((d) => setSenders(d.senders || []))
+      .catch(() => {});
+  }, []);
+
+  const reset = (sender) => {
+    fetch("/reset-sender", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sender }),
+    })
+      .then((r) => {
+        if (r.ok) {
+          setSenders((prev) => prev.filter((s) => s.sender !== sender));
+        } else {
+          alert("Failed to reset sender");
+        }
+      })
+      .catch(() => {});
+  };
+
+  const filtered =
+    filter === "all" ? senders : senders.filter((s) => s.status === filter);
+
+  return (
+    <div className="container">
+      <header className="header">
+        <button onClick={onClose}>Close</button>
+        <button
+          className={filter === "all" ? "active" : ""}
+          onClick={() => setFilter("all")}
+        >
+          All
+        </button>
+        <button
+          className={filter === "whitelist" ? "active" : ""}
+          onClick={() => setFilter("whitelist")}
+        >
+          Whitelist
+        </button>
+        <button
+          className={filter === "spam" ? "active" : ""}
+          onClick={() => setFilter("spam")}
+        >
+          Spam
+        </button>
+        <button
+          className={filter === "ignore" ? "active" : ""}
+          onClick={() => setFilter("ignore")}
+        >
+          Ignore
+        </button>
+      </header>
+      <div className="email-list">
+        <table>
+          <thead>
+            <tr>
+              <th>Sender</th>
+              <th>Status</th>
+              <th className="actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((s) => (
+              <tr key={s.sender}>
+                <td className="email-cell">{s.sender}</td>
+                <td>{s.status}</td>
+                <td className="actions">
+                  <button className="trash-btn" onClick={() => reset(s.sender)}>
+                    🗑
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [prompt, setPrompt] = useState("");
   const [emails, setEmails] = useState([]);
   const [days, setDays] = useState(3); // CODEX: default scan range reduced
   const [task, setTask] = useState(null);
+  const [managing, setManaging] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [pendingStatuses, setPendingStatuses] = useState({});
   // CODEX: track ids recently updated by the user to ignore incoming status
@@ -145,6 +233,14 @@ function App() {
 
   const linkGmail = () => {
     window.location.href = "/auth";
+  };
+
+  const openManage = () => {
+    setManaging(true);
+  };
+
+  const closeManage = () => {
+    setManaging(false);
   };
 
   const scan = () => {
@@ -301,6 +397,10 @@ function App() {
   const isScanningTask = task && !isRefreshTask;
   const noActiveTask = !task || task.stage === "closed";
 
+  if (managing) {
+    return <ManageSenders onClose={closeManage} />;
+  }
+
   return (
     <div className="container">
       <header className="header">
@@ -329,6 +429,7 @@ function App() {
         </div>
         {noActiveTask && <button onClick={scan}>Scan Emails</button>}
         {noActiveTask && <button onClick={refreshLists}>Refresh Lists</button>}
+        <button onClick={openManage}>Manage</button>
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>
