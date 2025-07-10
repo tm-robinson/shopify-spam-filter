@@ -177,3 +177,5 @@
 - Updated backlog to reflect web-only Gmail links.
   \n## 10th July 2025
 - Fixed status flicker when updating emails during scan by ignoring server updates for 5 seconds.
+- Added unconfirmed emails from database to /scan-status results.
+- Sorted scan status emails by date to mix old and new results correctly.

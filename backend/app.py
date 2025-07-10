@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import datetime
 import re
 import time
+from email.utils import parsedate_to_datetime
 
 from dotenv import load_dotenv
 
@@ -677,6 +678,31 @@ def scan_status(task_id):
             tasks[task_id] = task
     if not task:
         return jsonify({"error": "not found"}), 404
+    # CODEX: Include any unconfirmed emails stored in the database that aren't
+    # already part of this task. This ensures emails from previous scans are
+    # still visible even when the current scan only fetches new messages.
+    try:
+        existing = database.get_unconfirmed_emails(
+            g.user_id, datetime.datetime(1970, 1, 1)
+        )
+        known = {e["id"] for e in task.get("emails", [])}
+        for email in existing:
+            if email["id"] not in known:
+                task.setdefault("emails", []).append(email)
+
+        # CODEX: Sort emails by date so reused entries are merged in order
+        def _email_dt(email):
+            try:
+                dt = parsedate_to_datetime(email["date"])
+                if dt.tzinfo:
+                    dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                return dt
+            except Exception:
+                return datetime.datetime.min
+
+        task["emails"] = sorted(task.get("emails", []), key=_email_dt, reverse=True)
+    except Exception:
+        logger.error("Failed to load extra unconfirmed emails", exc_info=True)
     return jsonify(task)
 
 

@@ -246,13 +246,20 @@ labels remain accessible.
 - Gmail API requests are logged at debug level. (TODO)
 - Task stage in the database updates as progress occurs. (TODO)
 
-#### User Story: Reuse unconfirmed email data (TODO)
+#### User Story: Reuse unconfirmed email data (DONE)
 
 **Description:** As a user, I want emails that were scanned previously but not confirmed to appear in new scans so I can update their status without rescanning them. The system should also record when a spam filter has been created for a sender.
 
 **Test Scenarios:**
-- Scanning with a date range that overlaps previous scans lists those unconfirmed emails. (TODO)
-- Creating a filter that already exists marks the email as having the filter created. (TODO)
+- Scanning with a date range that overlaps previous scans lists those unconfirmed emails. (DONE)
+- Creating a filter that already exists marks the email as having the filter created. (DONE)
+
+#### User Story: Sort scan results by date (DONE)
+
+**Description:** As a user, I want emails from previous scans mixed with new ones in chronological order so older entries don't appear first.
+
+**Test Scenarios:**
+- Emails returned from `/scan-status/<id>` are ordered by their received date regardless of when they were scanned. (DONE)
 
 #### User Story: Track scanned emails in the database (DONE)
 
