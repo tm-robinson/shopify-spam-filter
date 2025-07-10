@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import datetime
 import re
 import time
+from email.utils import parsedate_to_datetime
 
 from dotenv import load_dotenv
 
@@ -450,8 +451,13 @@ def scan_emails():
             update_task(task_id, stage="fetching")
 
             existing_unconfirmed = database.get_unconfirmed_emails(user_id, date_after)
-            tasks[task_id]["emails"].extend(existing_unconfirmed)
-            skip_ids = set(e["id"] for e in existing_unconfirmed).union(confirmed_ids)
+            # CODEX: avoid adding the same email twice if status polling ran before the worker
+            known_ids = {e["id"] for e in tasks[task_id].get("emails", [])}
+            fresh = [e for e in existing_unconfirmed if e["id"] not in known_ids]
+            tasks[task_id]["emails"].extend(fresh)
+            skip_ids = set(e["id"] for e in tasks[task_id]["emails"]).union(
+                confirmed_ids
+            )
             update_task(
                 task_id,
                 progress=len(existing_unconfirmed),
@@ -677,6 +683,36 @@ def scan_status(task_id):
             tasks[task_id] = task
     if not task:
         return jsonify({"error": "not found"}), 404
+    # CODEX: Include any unconfirmed emails stored in the database that aren't
+    # already part of this task. This ensures emails from previous scans are
+    # still visible even when the current scan only fetches new messages.
+    try:
+        existing = database.get_unconfirmed_emails(
+            g.user_id, datetime.datetime(1970, 1, 1)
+        )
+        known = {e["id"] for e in task.get("emails", [])}
+        for email in existing:
+            if email["id"] not in known:
+                task.setdefault("emails", []).append(email)
+        # CODEX: remove any accidental duplicates in the task email list
+        unique = {}
+        for email in task.get("emails", []):
+            unique[email["id"]] = email
+        task["emails"] = list(unique.values())
+
+        # CODEX: Sort emails by date so reused entries are merged in order
+        def _email_dt(email):
+            try:
+                dt = parsedate_to_datetime(email["date"])
+                if dt.tzinfo:
+                    dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                return dt
+            except Exception:
+                return datetime.datetime.min
+
+        task["emails"] = sorted(task.get("emails", []), key=_email_dt, reverse=True)
+    except Exception:
+        logger.error("Failed to load extra unconfirmed emails", exc_info=True)
     return jsonify(task)
 
 
