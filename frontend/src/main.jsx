@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import "./App.css";
 
@@ -96,7 +96,13 @@ function App() {
   const [task, setTask] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [pendingStatuses, setPendingStatuses] = useState({});
+  // CODEX: track ids recently updated by the user to ignore incoming status
+  const pendingRef = useRef(pendingStatuses);
+  const ignoreStatusRef = useRef(new Set());
   const [showSpam, setShowSpam] = useState(true);
+  useEffect(() => {
+    pendingRef.current = pendingStatuses;
+  }, [pendingStatuses]);
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
@@ -212,10 +218,14 @@ function App() {
           setTask((prev) => ({ ...prev, ...d }));
           const incoming = d.emails || [];
           setEmails((prev) =>
-            incoming.map((e) => ({
-              ...e,
-              status: pendingStatuses[e.id] || e.status,
-            })),
+            incoming.map((e) => {
+              const prevEmail = prev.find((p) => p.id === e.id) || e;
+              const locked = ignoreStatusRef.current.has(e.id);
+              const status = locked
+                ? prevEmail.status
+                : pendingRef.current[e.id] || e.status;
+              return { ...e, status };
+            }),
           );
           setPendingStatuses((prev) => {
             const remaining = { ...prev };
@@ -244,6 +254,10 @@ function App() {
 
   const updateStatus = (id, status) => {
     setPendingStatuses((prev) => ({ ...prev, [id]: status }));
+    ignoreStatusRef.current.add(id); // CODEX: prevent flicker on next poll
+    setTimeout(() => {
+      ignoreStatusRef.current.delete(id);
+    }, 5000);
     fetch("/update-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

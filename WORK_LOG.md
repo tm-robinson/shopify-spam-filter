@@ -143,6 +143,7 @@
 - Added new user story about reusing unconfirmed email data.
 - Removed `scan-persist` Gmail label and store scanned IDs in database.
 - Fixed timezone handling in `get_unconfirmed_emails` to prevent runtime errors.
+
 ## 7th July 2025
 
 - Fixed tasks table to update existing rows by storing task id in memory.
@@ -174,3 +175,5 @@
 - Updated whitelist search link to use an Android intent and fall back to the Gmail web client on iOS and desktop.
 - Reverted all Gmail links to open the web client regardless of platform.
 - Updated backlog to reflect web-only Gmail links.
+  \n## 10th July 2025
+- Fixed status flicker when updating emails during scan by ignoring server updates for 5 seconds.
