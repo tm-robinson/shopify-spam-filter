@@ -167,3 +167,10 @@
 - Documented new user story for task-based button visibility.
 - Fixed refresh button visibility so no buttons show during a refresh task.
 - Marked the action button visibility user story as done.
+- Added Gmail whitelist search link in the header.
+- Documented new user story for whitelist search.
+- Simplified whitelist search URL for better mobile compatibility and marked the user story as done.
+- Updated whitelist link to open the Gmail app on mobile using the googlegmail protocol.
+- Updated whitelist search link to use an Android intent and fall back to the Gmail web client on iOS and desktop.
+- Reverted all Gmail links to open the web client regardless of platform.
+- Updated backlog to reflect web-only Gmail links.

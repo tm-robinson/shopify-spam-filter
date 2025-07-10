@@ -289,3 +289,10 @@ labels remain accessible.
 - Scan Emails and Confirm hide during a refresh task. (TODO)
 - Refresh Lists button hides during a refresh task. (TODO)
 
+#### User Story: Link to whitelist search (DONE)
+
+**Description:** As a user, I want a direct link in the app header that opens Gmail with all whitelisted emails so I can review them quickly.
+
+**Test Scenarios:**
+- Clicking the link opens Gmail showing `label:whitelist` results in the web client on any platform. (TODO)
+
