@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, redirect, g
 import os
 import json
 import logging
+from contextvars import ContextVar
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -27,6 +28,33 @@ logging.basicConfig(level=logging.INFO)
 logger = app.logger
 logger.setLevel(logging.DEBUG)
 
+# CODEX: store per-user logs and user context for debugging
+user_context: ContextVar[str | None] = ContextVar("user_id", default=None)
+user_logs: dict[str, list[str]] = {}
+
+
+class ContextFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.user_id = user_context.get()
+        return True
+
+
+class MemoryLogHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        user_id = getattr(record, "user_id", None)
+        if not user_id:
+            return
+        logs = user_logs.setdefault(user_id, [])
+        logs.append(self.format(record))
+        if len(logs) > 200:
+            user_logs[user_id] = logs[-200:]
+
+
+handler = MemoryLogHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+logger.addHandler(handler)
+logger.addFilter(ContextFilter())
+
 # CODEX: Initialize database and manage user identity cookie
 database.init_db()
 
@@ -40,12 +68,17 @@ def assign_user():
     else:
         g.new_user = False
     g.user_id = user_id
+    token = user_context.set(user_id)
+    g._ctx_token = token
 
 
 @app.after_request
 def set_user_cookie(resp):
     if getattr(g, "new_user", False):
         resp.set_cookie("user_id", g.user_id)
+    token = getattr(g, "_ctx_token", None)
+    if token is not None:
+        user_context.reset(token)
     return resp
 
 
@@ -57,6 +90,8 @@ PROMPT_FILE = os.path.join(os.path.dirname(__file__), "last_prompt.json")
 
 # in-memory store for background scan tasks
 tasks = {}
+# CODEX: retain brief summaries for closed tasks
+task_summaries: dict[str, dict] = {}
 
 
 def update_task_email_status(msg_id: str, status: str) -> None:
@@ -438,6 +473,7 @@ def scan_emails():
     user_id = g.user_id
 
     def worker():
+        token = user_context.set(user_id)
         try:
             whitelist = set(database.get_senders(user_id, "whitelist"))
             ignorelist = set(database.get_senders(user_id, "ignore"))
@@ -668,6 +704,9 @@ def scan_emails():
             import traceback
 
             print(traceback.format_exc())
+        finally:
+            task_summaries[task_id] = {"message": "Scan completed"}
+            user_context.reset(token)
 
     threading.Thread(target=worker).start()
     return jsonify({"task_id": task_id})
@@ -682,6 +721,9 @@ def scan_status(task_id):
         if task:
             tasks[task_id] = task
     if not task:
+        summary = task_summaries.pop(task_id, None)
+        if summary:
+            return jsonify({"stage": "closed", "summary": summary})
         return jsonify({"error": "not found"}), 404
     # CODEX: Include any unconfirmed emails stored in the database that aren't
     # already part of this task. This ensures emails from previous scans are
@@ -758,6 +800,7 @@ def refresh_senders():
     user_id = g.user_id
 
     def worker():
+        token = user_context.set(user_id)
         try:
             service = build("gmail", "v1", credentials=creds)
             existing = set(database.get_all_email_ids(user_id))
@@ -799,6 +842,8 @@ def refresh_senders():
             update_task(task_id, stage="closed")
             tasks.pop(task_id, None)
             database.delete_task(task_id)
+            task_summaries[task_id] = {"message": "Refresh completed"}
+            user_context.reset(token)
 
     threading.Thread(target=worker).start()
     return jsonify({"task_id": task_id})
@@ -911,74 +956,81 @@ def confirm():
     user_id = g.user_id
 
     def worker():
-        service = build("gmail", "v1", credentials=creds)
-        spam_label = get_label_id(service, "shopify-spam")
-        for idx, msg_id in enumerate(ids):
-            status = database.get_email_status(user_id, msg_id) or "not_spam"
-            if status == "spam":
-                logger.debug("Gmail request: get message %s for confirmation", msg_id)
-                msg = (
-                    service.users()
-                    .messages()
-                    .get(
+        token = user_context.set(user_id)
+        try:
+            service = build("gmail", "v1", credentials=creds)
+            spam_label = get_label_id(service, "shopify-spam")
+            for idx, msg_id in enumerate(ids):
+                status = database.get_email_status(user_id, msg_id) or "not_spam"
+                if status == "spam":
+                    logger.debug(
+                        "Gmail request: get message %s for confirmation", msg_id
+                    )
+                    msg = (
+                        service.users()
+                        .messages()
+                        .get(
+                            userId="me",
+                            id=msg_id,
+                            format="metadata",
+                            metadataHeaders=["From"],
+                        )
+                        .execute()
+                    )
+                    logger.debug("Gmail response: %s", msg)
+                    sender = next(
+                        (
+                            h["value"]
+                            for h in msg["payload"]["headers"]
+                            if h["name"].lower() == "from"
+                        ),
+                        "",
+                    )
+                    try:
+                        if not database.has_filter_for_sender(user_id, sender):
+                            logger.debug("Gmail request: create filter for %s", sender)
+                            service.users().settings().filters().create(
+                                userId="me",
+                                body={
+                                    "criteria": {"from": sender},
+                                    "action": {
+                                        "addLabelIds": [spam_label],
+                                        "removeLabelIds": ["INBOX"],
+                                    },
+                                },
+                            ).execute()
+                            database.set_filter_created(user_id, msg_id)
+                        else:
+                            database.set_filter_created(user_id, msg_id)
+                    except Exception as e:
+                        if "already exists" in str(e).lower():
+                            database.set_filter_created(user_id, msg_id)
+                        else:
+                            import traceback
+
+                            logger.error(traceback.format_exc())
+                    logger.debug("Gmail request: label %s as shopify-spam", msg_id)
+                    service.users().messages().modify(
                         userId="me",
                         id=msg_id,
-                        format="metadata",
-                        metadataHeaders=["From"],
-                    )
-                    .execute()
-                )
-                logger.debug("Gmail response: %s", msg)
-                sender = next(
-                    (
-                        h["value"]
-                        for h in msg["payload"]["headers"]
-                        if h["name"].lower() == "from"
-                    ),
-                    "",
-                )
-                try:
-                    if not database.has_filter_for_sender(user_id, sender):
-                        logger.debug("Gmail request: create filter for %s", sender)
-                        service.users().settings().filters().create(
-                            userId="me",
-                            body={
-                                "criteria": {"from": sender},
-                                "action": {
-                                    "addLabelIds": [spam_label],
-                                    "removeLabelIds": ["INBOX"],
-                                },
-                            },
-                        ).execute()
-                        database.set_filter_created(user_id, msg_id)
-                    else:
-                        database.set_filter_created(user_id, msg_id)
-                except Exception as e:
-                    if "already exists" in str(e).lower():
-                        database.set_filter_created(user_id, msg_id)
-                    else:
-                        import traceback
+                        body={
+                            "addLabelIds": [spam_label],
+                            "removeLabelIds": ["INBOX"],
+                        },
+                    ).execute()
+                    update_task_email_status(msg_id, "spam")
+                    database.save_sender(user_id, sender, "spam")
+                database.confirm_email(user_id, msg_id)
+                if task_id and task_id in tasks:
+                    update_task(task_id, progress=idx + 1)
 
-                        logger.error(traceback.format_exc())
-                logger.debug("Gmail request: label %s as shopify-spam", msg_id)
-                service.users().messages().modify(
-                    userId="me",
-                    id=msg_id,
-                    body={
-                        "addLabelIds": [spam_label],
-                        "removeLabelIds": ["INBOX"],
-                    },
-                ).execute()
-                update_task_email_status(msg_id, "spam")
-                database.save_sender(user_id, sender, "spam")
-            database.confirm_email(user_id, msg_id)
+        finally:
             if task_id and task_id in tasks:
-                update_task(task_id, progress=idx + 1)
-
-        if task_id and task_id in tasks:
-            update_task(task_id, stage="closed", progress=len(ids))
-            tasks.pop(task_id, None)
-            database.delete_task(task_id)
+                update_task(task_id, stage="closed", progress=len(ids))
+                tasks.pop(task_id, None)
+                database.delete_task(task_id)
+                task_summaries[task_id] = {"message": "Confirmation complete"}
+            user_context.reset(token)
 
     threading.Thread(target=worker).start()
     return ("", 202)
@@ -998,6 +1050,23 @@ def reset_sender():
     if not sender:
         return jsonify({"error": "missing sender"}), 400
     database.clear_sender(g.user_id, sender)
+    return ("", 204)
+
+
+@app.route("/logs")
+def user_logs_endpoint():
+    """Return recent log lines for the current user."""
+    return jsonify({"logs": user_logs.get(g.user_id, [])})
+
+
+@app.route("/clear-task", methods=["POST"])
+def clear_task():
+    """Remove a task that is stuck or closed."""
+    task_id = request.json.get("task_id")
+    if not task_id:
+        return jsonify({"error": "missing task"}), 400
+    tasks.pop(task_id, None)
+    database.delete_task(task_id)
     return ("", 204)
 
 
