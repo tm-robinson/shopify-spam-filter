@@ -188,6 +188,8 @@ function App() {
   const pendingRef = useRef(pendingStatuses);
   const ignoreStatusRef = useRef(new Set());
   const [showSpam, setShowSpam] = useState(true);
+  const [logLines, setLogLines] = useState([]);
+  const [showLogs, setShowLogs] = useState(false);
   useEffect(() => {
     pendingRef.current = pendingStatuses;
   }, [pendingStatuses]);
@@ -241,6 +243,34 @@ function App() {
 
   const closeManage = () => {
     setManaging(false);
+  };
+
+  const viewLogs = () => {
+    fetch("/logs")
+      .then((r) => r.json())
+      .then((d) => {
+        setLogLines(d.logs || []);
+        setShowLogs(true);
+      })
+      .catch(() => {});
+  };
+
+  const clearTask = () => {
+    if (!task) return;
+    fetch("/clear-task", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_id: task.id }),
+    })
+      .then((r) => {
+        if (r.ok) {
+          setTask(null);
+          setEmails([]);
+        } else {
+          alert("Failed to clear task");
+        }
+      })
+      .catch(() => {});
   };
 
   const scan = () => {
@@ -310,6 +340,12 @@ function App() {
         })
         .then((d) => {
           if (!d) return;
+          if (d.summary) {
+            alert(d.summary.message || "Task complete");
+            setTask(null);
+            setEmails([]);
+            return;
+          }
           // CODEX: Preserve task id so polling continues
           setTask((prev) => ({ ...prev, ...d }));
           const incoming = d.emails || [];
@@ -430,6 +466,8 @@ function App() {
         {noActiveTask && <button onClick={scan}>Scan Emails</button>}
         {noActiveTask && <button onClick={refreshLists}>Refresh Lists</button>}
         <button onClick={openManage}>Manage</button>
+        <button onClick={viewLogs}>View Logs</button>
+        {task && <button onClick={clearTask}>Clear Task</button>}
         {task && task.stage !== "done" && (
           <div className="progress">
             <div>
@@ -494,6 +532,12 @@ function App() {
           </tbody>
         </table>
       </div>
+      {showLogs && (
+        <div className="logs-dialog">
+          <pre>{logLines.join("\n")}</pre>
+          <button onClick={() => setShowLogs(false)}>Close</button>
+        </div>
+      )}
     </div>
   );
 }

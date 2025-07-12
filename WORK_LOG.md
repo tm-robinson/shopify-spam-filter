@@ -181,3 +181,7 @@
 - Sorted scan status emails by date to mix old and new results correctly.
 - Deduplicated unconfirmed emails during scans and in scan status results (Prevent duplicate scan results).
 - Added sender management page with backend APIs to list and reset senders.
+\n## 12th July 2025
+- Added log viewing and task clearing features with backend APIs.
+- UI now has View Logs and Clear Task buttons.
+- Completed tasks return a summary from /scan-status.

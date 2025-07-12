@@ -320,3 +320,13 @@ labels remain accessible.
 - Filter buttons show only whitelist, spam or ignore senders. (TODO)
 - Clicking the trashcan removes the sender and unconfirms related emails. (TODO)
 
+#### User Story: View task logs and clear tasks (TODO)
+
+**Description:** As a user, I want to see backend logs for my account and remove stuck tasks so I can troubleshoot issues.
+
+**Test Scenarios:**
+
+- Clicking "View Logs" shows log lines since the last restart. (TODO)
+- Clicking "Clear Task" removes the current task from the UI and database. (TODO)
+- `/scan-status/<id>` returns a summary when a task completes so the UI can alert me. (TODO)
+
