@@ -297,3 +297,27 @@ def get_all_email_ids(user_id: str):
             (user_id,),
         ).fetchall()
         return [r["email_id"] for r in rows]
+
+
+def list_senders(user_id: str):
+    """Return all senders and their status for the given user."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT sender, status FROM senders WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        return [{"sender": r["sender"], "status": r["status"]} for r in rows]
+
+
+def clear_sender(user_id: str, sender: str) -> None:
+    """Remove sender from list and delete related email statuses."""
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM senders WHERE user_id = ? AND sender = ?",
+            (user_id, sender),
+        )
+        conn.execute(
+            "DELETE FROM email_status WHERE user_id = ? AND sender = ?",
+            (user_id, sender),
+        )
+        conn.commit()
