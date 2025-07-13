@@ -713,6 +713,7 @@ def scan_emails():
             )
         except Exception:
             import traceback
+            logger.error("Exception occurred during scan task: %s - %s", task_id, traceback.format_exc(), exc_info=True)
 
             print(traceback.format_exc())
         finally:
