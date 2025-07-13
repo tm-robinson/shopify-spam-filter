@@ -175,13 +175,21 @@
 - Updated whitelist search link to use an Android intent and fall back to the Gmail web client on iOS and desktop.
 - Reverted all Gmail links to open the web client regardless of platform.
 - Updated backlog to reflect web-only Gmail links.
-  \n## 10th July 2025
+
+## 10th July 2025
+
 - Fixed status flicker when updating emails during scan by ignoring server updates for 5 seconds.
 - Added unconfirmed emails from database to /scan-status results.
 - Sorted scan status emails by date to mix old and new results correctly.
 - Deduplicated unconfirmed emails during scans and in scan status results (Prevent duplicate scan results).
 - Added sender management page with backend APIs to list and reset senders.
-\n## 12th July 2025
+
+## 12th July 2025
+
 - Added log viewing and task clearing features with backend APIs.
 - UI now has View Logs and Clear Task buttons.
 - Completed tasks return a summary from /scan-status.
+
+## 13th July 2025
+
+- Added proxy configuration for new log and task APIs.

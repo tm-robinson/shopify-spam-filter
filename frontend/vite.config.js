@@ -72,6 +72,30 @@ export default defineConfig({
         secure: false,
         agent: httpsAgent,
       },
+      "/senders": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
+      "/reset-sender": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
+      "/logs": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
+      "/clear-task": {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        agent: httpsAgent,
+      },
     },
   },
 });

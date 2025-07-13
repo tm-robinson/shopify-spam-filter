@@ -320,7 +320,7 @@ labels remain accessible.
 - Filter buttons show only whitelist, spam or ignore senders. (TODO)
 - Clicking the trashcan removes the sender and unconfirms related emails. (TODO)
 
-#### User Story: View task logs and clear tasks (TODO)
+#### User Story: View task logs and clear tasks (DONE)
 
 **Description:** As a user, I want to see backend logs for my account and remove stuck tasks so I can troubleshoot issues.
 
