@@ -201,6 +201,7 @@ reliably fetched.
 **Description:** As a user I want my Gmail token, scan tasks and results stored separately so multiple users can use the app.
 
 **Test Scenarios:**
+
 - Returning to the site preserves my Gmail link via cookie. (TODO)
 - Scan tasks are loaded from the database on refresh. (DONE)
 - Confirmed emails are not scanned again. (DONE)
@@ -212,6 +213,7 @@ my existing account by matching the Gmail address so that my saved tasks and
 labels remain accessible.
 
 **Test Scenarios:**
+
 - Linking Gmail with an address that already exists reuses the previous
   `user_id` cookie. (DONE)
 
@@ -220,6 +222,7 @@ labels remain accessible.
 **Description:** As a user, I want the UI to automatically show progress for any running scan task started on another device or tab so that I don't have to start a new scan.
 
 **Test Scenarios:**
+
 - Opening the app on a second device while a scan is running begins polling automatically. (DONE)
 
 #### User Story: Confirmation progress tracking (TODO)
@@ -227,6 +230,7 @@ labels remain accessible.
 **Description:** As a user, I want the task to show a confirming stage with progress so I know how many emails are finalised when I click confirm.
 
 **Test Scenarios:**
+
 - Task stage switches to "confirming" when the confirm button is pressed. (DONE)
 - Progress increases as each email is confirmed. (DONE)
 
@@ -235,6 +239,7 @@ labels remain accessible.
 **Description:** As a developer, I want a simple script to clear the SQLite database so I can start fresh during testing.
 
 **Test Scenarios:**
+
 - Running `reset_db.sh` removes any existing data and recreates the schema. (TODO)
 
 #### User Story: Enhanced debug logging (DONE)
@@ -242,6 +247,7 @@ labels remain accessible.
 **Description:** As a developer, I want detailed debug logs and real-time task status updates so that troubleshooting is easier.
 
 **Test Scenarios:**
+
 - Stage transitions are logged with task id. (TODO)
 - Gmail API requests are logged at debug level. (TODO)
 - Task stage in the database updates as progress occurs. (TODO)
@@ -251,6 +257,7 @@ labels remain accessible.
 **Description:** As a user, I want emails that were scanned previously but not confirmed to appear in new scans so I can update their status without rescanning them. The system should also record when a spam filter has been created for a sender.
 
 **Test Scenarios:**
+
 - Scanning with a date range that overlaps previous scans lists those unconfirmed emails. (DONE)
 - Creating a filter that already exists marks the email as having the filter created. (DONE)
 
@@ -259,6 +266,7 @@ labels remain accessible.
 **Description:** As a user, I want emails from previous scans mixed with new ones in chronological order so older entries don't appear first.
 
 **Test Scenarios:**
+
 - Emails returned from `/scan-status/<id>` are ordered by their received date regardless of when they were scanned. (DONE)
 
 #### User Story: Prevent duplicate scan results (DONE)
@@ -266,6 +274,7 @@ labels remain accessible.
 **Description:** As a user, I want each email to appear only once in the list even when data comes from both the current scan and the database.
 
 **Test Scenarios:**
+
 - `/scan-status/<id>` never returns the same email id twice. (DONE)
 
 #### User Story: Track scanned emails in the database (DONE)
@@ -282,6 +291,7 @@ labels remain accessible.
 **Description:** As a user, I want to refresh my whitelist, spam and ignore sender lists manually so regular scans are faster.
 
 **Test Scenarios:**
+
 - Clicking the "Refresh Lists" button starts a background task. (DONE)
 - Scanning emails no longer re-fetches these lists from Gmail. (DONE)
 
@@ -290,6 +300,7 @@ labels remain accessible.
 **Description:** As a developer, I want the refresh process to ignore emails that are already stored in the database so updating sender lists is faster.
 
 **Test Scenarios:**
+
 - Email IDs already in `email_status` are not fetched again from Gmail. (TODO)
 
 #### User Story: Action buttons depend on task state (DONE)
@@ -297,6 +308,7 @@ labels remain accessible.
 **Description:** As a user, I want the scan, confirm and refresh buttons to appear only when it makes sense so I don't start conflicting tasks.
 
 **Test Scenarios:**
+
 - Confirm button only shows when the latest task is done. (TODO)
 - Scan Emails button hides if any task is running. (TODO)
 - Refresh Lists button hides during a scan task. (TODO)
@@ -308,6 +320,7 @@ labels remain accessible.
 **Description:** As a user, I want a direct link in the app header that opens Gmail with all whitelisted emails so I can review them quickly.
 
 **Test Scenarios:**
+
 - Clicking the link opens Gmail showing `label:whitelist` results in the web client on any platform. (TODO)
 
 #### User Story: Manage sender list (TODO)
@@ -320,3 +333,12 @@ labels remain accessible.
 - Filter buttons show only whitelist, spam or ignore senders. (TODO)
 - Clicking the trashcan removes the sender and unconfirms related emails. (TODO)
 
+#### User Story: View task logs and clear tasks (DONE)
+
+**Description:** As a user, I want to see backend logs for my account and remove stuck tasks so I can troubleshoot issues.
+
+**Test Scenarios:**
+
+- Clicking "View Logs" shows log lines since the last restart. (TODO)
+- Clicking "Clear Task" removes the current task from the UI and database. (TODO)
+- `/scan-status/<id>` returns a summary when a task completes so the UI can alert me. (TODO)
