@@ -111,20 +111,23 @@ def update_task(
     total: int | None = None,
 ) -> None:
     """Update task info and persist to the database."""
+    info = tasks.get(task_id)
+    if not info:
+        return
     if stage is not None:
-        tasks[task_id]["stage"] = stage
+        info["stage"] = stage
     if progress is not None:
-        tasks[task_id]["progress"] = progress
+        info["progress"] = progress
     if total is not None:
-        tasks[task_id]["total"] = total
+        info["total"] = total
     logger.debug(
         "Task %s stage=%s progress=%s/%s",
         task_id,
-        tasks[task_id].get("stage"),
-        tasks[task_id].get("progress"),
-        tasks[task_id].get("total"),
+        info.get("stage"),
+        info.get("progress"),
+        info.get("total"),
     )
-    database.save_task(tasks[task_id])
+    database.save_task(info)
 
 
 # Google OAuth client credentials
@@ -488,10 +491,12 @@ def scan_emails():
 
             existing_unconfirmed = database.get_unconfirmed_emails(user_id, date_after)
             # CODEX: avoid adding the same email twice if status polling ran before the worker
-            known_ids = {e["id"] for e in tasks[task_id].get("emails", [])}
+            task_info = tasks.get(task_id, {})
+            known_ids = {e["id"] for e in task_info.get("emails", [])}
             fresh = [e for e in existing_unconfirmed if e["id"] not in known_ids]
-            tasks[task_id]["emails"].extend(fresh)
-            skip_ids = set(e["id"] for e in tasks[task_id]["emails"]).union(
+            if task_id in tasks:
+                tasks[task_id]["emails"].extend(fresh)
+            skip_ids = set(e["id"] for e in task_info.get("emails", [])).union(
                 confirmed_ids
             )
             update_task(
@@ -505,7 +510,10 @@ def scan_emails():
             messages = [m for m in messages if m["id"] not in skip_ids]
 
             update_task(task_id, total=len(messages) + len(existing_unconfirmed))
-            logger.info("messages length is currently %d ", tasks[task_id]["total"])
+            logger.info(
+                "messages length is currently %d ",
+                tasks.get(task_id, {}).get("total", 0),
+            )
             openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
             if not openrouter_key and os.path.exists(OPENROUTER_KEY_FILE):
                 with open(OPENROUTER_KEY_FILE) as f:
@@ -612,18 +620,19 @@ def scan_emails():
                                     answer = resp.json()["choices"][0]["message"][
                                         "content"
                                     ]
-                                    tasks[task_id]["log"].append(
-                                        {"role": "system", "content": prompt}
-                                    )
-                                    tasks[task_id]["log"].append(
-                                        {"role": "user", "content": text_md}
-                                    )
-                                    tasks[task_id]["log"].append(
-                                        {
-                                            "role": "assistant",
-                                            "content": answer,
-                                        }
-                                    )
+                                    if task_id in tasks:
+                                        tasks[task_id]["log"].append(
+                                            {"role": "system", "content": prompt}
+                                        )
+                                        tasks[task_id]["log"].append(
+                                            {"role": "user", "content": text_md}
+                                        )
+                                        tasks[task_id]["log"].append(
+                                            {
+                                                "role": "assistant",
+                                                "content": answer,
+                                            }
+                                        )
                                     if "yes" in answer.lower():
                                         status = "spam"
                                     llm_sent = True
@@ -673,18 +682,19 @@ def scan_emails():
                             },
                         ).execute()
 
-                    tasks[task_id]["emails"].append(
-                        {
-                            "id": msg["id"],
-                            "subject": subject,
-                            "sender": sender,
-                            "date": date,
-                            "status": status,
-                            "request": text_md if llm_sent else "",
-                            "response": answer if llm_sent else "",
-                            "llm_sent": llm_sent,
-                        }
-                    )
+                    if task_id in tasks:
+                        tasks[task_id]["emails"].append(
+                            {
+                                "id": msg["id"],
+                                "subject": subject,
+                                "sender": sender,
+                                "date": date,
+                                "status": status,
+                                "request": text_md if llm_sent else "",
+                                "response": answer if llm_sent else "",
+                                "llm_sent": llm_sent,
+                            }
+                        )
                     database.save_email_status(
                         user_id,
                         msg["id"],
@@ -693,12 +703,13 @@ def scan_emails():
                         sender=sender,
                         date=date,
                     )
-                    database.save_task(tasks[task_id])
+                    if task_id in tasks:
+                        database.save_task(tasks[task_id])
 
             update_task(
                 task_id,
                 stage="done",
-                progress=tasks[task_id]["total"],
+                progress=tasks.get(task_id, {}).get("total", 0),
             )
         except Exception:
             import traceback

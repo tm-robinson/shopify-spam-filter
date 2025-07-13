@@ -193,3 +193,4 @@
 ## 13th July 2025
 
 - Added proxy configuration for new log and task APIs.
+- Fixed crash when clearing a running task by checking task existence before updating.
