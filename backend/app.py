@@ -431,7 +431,13 @@ def fetch_label_senders(
             "",
         )
         database.save_sender(user_id, sender, status)
-        # database.save_email_status(user_id, msg_id, status, confirmed=True)
+        database.save_email_status_if_absent(
+            user_id,
+            msg_id,
+            status,
+            confirmed=False,
+            sender=sender,
+        )
 
 
 @app.route("/scan-emails", methods=["POST"])
@@ -713,7 +719,13 @@ def scan_emails():
             )
         except Exception:
             import traceback
-            logger.error("Exception occurred during scan task: %s - %s", task_id, traceback.format_exc(), exc_info=True)
+
+            logger.error(
+                "Exception occurred during scan task: %s - %s",
+                task_id,
+                traceback.format_exc(),
+                exc_info=True,
+            )
 
             print(traceback.format_exc())
         finally:

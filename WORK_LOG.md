@@ -194,3 +194,4 @@
 
 - Added proxy configuration for new log and task APIs.
 - Fixed crash when clearing a running task by checking task existence before updating.
+- Refresh tasks now save unseen emails in `email_status` as unconfirmed to skip re-fetches.

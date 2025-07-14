@@ -203,6 +203,44 @@ def save_email_status(
         conn.commit()
 
 
+def save_email_status_if_absent(
+    user_id: str,
+    email_id: str,
+    status: str,
+    *,
+    confirmed: bool = False,
+    subject: str | None = None,
+    sender: str | None = None,
+    date: str | None = None,
+    filter_created: bool | None = None,
+) -> None:
+    """Insert email status details only if the record does not already exist."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM email_status WHERE user_id = ? AND email_id = ?",
+            (user_id, email_id),
+        ).fetchone()
+        if row:
+            return
+        conn.execute(
+            (
+                "INSERT INTO email_status (user_id, email_id, status, confirmed, "
+                "subject, sender, date, filter_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
+            (
+                user_id,
+                email_id,
+                status,
+                int(confirmed),
+                subject,
+                sender,
+                date,
+                int(filter_created or 0),
+            ),
+        )
+        conn.commit()
+
+
 def confirm_email(user_id: str, email_id: str) -> None:
     with get_connection() as conn:
         conn.execute(
