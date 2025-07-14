@@ -302,6 +302,7 @@ labels remain accessible.
 **Test Scenarios:**
 
 - Email IDs already in `email_status` are not fetched again from Gmail. (TODO)
+- New emails with labels are stored in `email_status` with `confirmed = 0`. (TODO)
 
 #### User Story: Action buttons depend on task state (DONE)
 
