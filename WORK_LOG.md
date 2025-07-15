@@ -204,3 +204,4 @@
 - Updated backlog with new log viewer scenarios.
 - Filtered /logs request and response entries from the log viewer results.
 - Fixed filtering to exclude the /logs response payload lines.
+- Adjusted filtering for log payload lines without the slash.

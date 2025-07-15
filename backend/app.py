@@ -1115,7 +1115,13 @@ def user_logs_endpoint():
     """Return recent log lines for the current user."""
     # CODEX: filter out request and response logs for this endpoint
     lines = user_logs.get(g.user_id, [])
-    filtered = [l for l in lines if "/logs" not in l]
+    filtered = []
+    for line in lines:
+        if "/logs" in line:
+            continue
+        if "Response payload" in line and "logs" in line:
+            continue
+        filtered.append(line)
     return jsonify({"logs": filtered})
 
 
