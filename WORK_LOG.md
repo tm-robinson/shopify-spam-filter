@@ -197,3 +197,11 @@
 - Refresh tasks now save unseen emails in `email_status` as unconfirmed to skip re-fetches.
 ## 14th July 2025
 - Added automatic request and response logging via Flask hooks. Added debug log for email classification decisions.
+
+## 15th July 2025
+- Wrapped log lines to avoid horizontal scrolling.
+- Logs dialog now polls every second and scrolls to the bottom when open.
+- Updated backlog with new log viewer scenarios.
+- Filtered /logs request and response entries from the log viewer results.
+- Fixed filtering to exclude the /logs response payload lines.
+- Adjusted filtering for log payload lines without the slash.
