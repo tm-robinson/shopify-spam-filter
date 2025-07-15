@@ -72,6 +72,19 @@ def assign_user():
     g._ctx_token = token
 
 
+@app.before_request
+def log_request_info():
+    """Log basic info about incoming requests"""
+    logger.info("Inbound %s %s", request.method, request.path)
+    if request.method in {"POST", "PUT", "PATCH"}:
+        data = request.get_json(silent=True)
+        if data is not None:
+            payload = str(data)
+            if len(payload) > 500:
+                payload = payload[:497] + "..."
+            logger.debug("Request payload: %s", payload)
+
+
 @app.after_request
 def set_user_cookie(resp):
     if getattr(g, "new_user", False):
@@ -79,6 +92,24 @@ def set_user_cookie(resp):
     token = getattr(g, "_ctx_token", None)
     if token is not None:
         user_context.reset(token)
+    return resp
+
+
+@app.after_request
+def log_response_info(resp):
+    """Log info about outgoing responses"""
+    logger.info(
+        "Outbound %s %s -> %s",
+        request.method,
+        request.path,
+        resp.status,
+    )
+    if resp.is_json:
+        payload = resp.get_json()
+        snippet = str(payload)
+        if len(snippet) > 500:
+            snippet = snippet[:497] + "..."
+        logger.debug("Response payload: %s", snippet)
     return resp
 
 
@@ -650,6 +681,8 @@ def scan_emails():
                                     )
                             except Exception:
                                 pass
+
+                    logger.debug("Email %s classified as %s", msg["id"], status)
 
                     if status == "spam":
                         logger.debug("Gmail request: add spam label to %s", msg["id"])

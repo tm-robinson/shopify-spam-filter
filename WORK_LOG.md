@@ -195,3 +195,5 @@
 - Added proxy configuration for new log and task APIs.
 - Fixed crash when clearing a running task by checking task existence before updating.
 - Refresh tasks now save unseen emails in `email_status` as unconfirmed to skip re-fetches.
+## 14th July 2025
+- Added automatic request and response logging via Flask hooks. Added debug log for email classification decisions.
