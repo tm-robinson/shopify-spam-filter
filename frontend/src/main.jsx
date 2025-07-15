@@ -190,9 +190,16 @@ function App() {
   const [showSpam, setShowSpam] = useState(true);
   const [logLines, setLogLines] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
+  const logsRef = useRef(null); // CODEX: container for log scrolling
+  const initialLogScroll = useRef(false); // CODEX: track initial scroll state
   useEffect(() => {
     pendingRef.current = pendingStatuses;
   }, [pendingStatuses]);
+  useEffect(() => {
+    if (!showLogs) return undefined;
+    const id = setInterval(fetchLogs, 1000);
+    return () => clearInterval(id);
+  }, [showLogs]);
   const [showNotSpam, setShowNotSpam] = useState(true);
   const [showWhitelist, setShowWhitelist] = useState(true);
   const [showIgnore, setShowIgnore] = useState(true);
@@ -245,14 +252,30 @@ function App() {
     setManaging(false);
   };
 
-  const viewLogs = () => {
+  const fetchLogs = () => {
+    const container = logsRef.current;
+    const atBottom =
+      container &&
+      container.scrollTop + container.clientHeight >=
+        container.scrollHeight - 5;
     fetch("/logs")
       .then((r) => r.json())
       .then((d) => {
         setLogLines(d.logs || []);
-        setShowLogs(true);
+        requestAnimationFrame(() => {
+          if (logsRef.current && (atBottom || initialLogScroll.current)) {
+            logsRef.current.scrollTop = logsRef.current.scrollHeight;
+          }
+          initialLogScroll.current = false;
+        });
       })
       .catch(() => {});
+  };
+
+  const viewLogs = () => {
+    initialLogScroll.current = true;
+    setShowLogs(true);
+    fetchLogs();
   };
 
   const clearTask = () => {
@@ -533,7 +556,7 @@ function App() {
         </table>
       </div>
       {showLogs && (
-        <div className="logs-dialog">
+        <div className="logs-dialog" ref={logsRef}>
           <pre>{logLines.join("\n")}</pre>
           <button onClick={() => setShowLogs(false)}>Close</button>
         </div>

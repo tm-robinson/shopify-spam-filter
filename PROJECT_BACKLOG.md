@@ -343,3 +343,6 @@ labels remain accessible.
 - Clicking "View Logs" shows log lines since the last restart. (TODO)
 - Clicking "Clear Task" removes the current task from the UI and database. (TODO)
 - `/scan-status/<id>` returns a summary when a task completes so the UI can alert me. (TODO)
+- Log lines wrap without horizontal scrolling. (TODO)
+- Logs update every second while the dialog is open. (TODO)
+- Logs auto-scroll to the bottom when already scrolled to the bottom. (TODO)

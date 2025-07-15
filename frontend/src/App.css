@@ -193,3 +193,8 @@ button.ignore {
   padding: 10px;
   z-index: 100;
 }
+.logs-dialog pre {
+  white-space: pre-wrap; /* CODEX: wrap long log lines */
+  word-break: break-word;
+  margin: 0;
+}
