@@ -1113,7 +1113,12 @@ def reset_sender():
 @app.route("/logs")
 def user_logs_endpoint():
     """Return recent log lines for the current user."""
-    return jsonify({"logs": user_logs.get(g.user_id, [])})
+    # CODEX: filter out request/response logs for this endpoint
+    lines = user_logs.get(g.user_id, [])
+    filtered = [
+        l for l in lines if not ("/logs" in l and ("Inbound" in l or "Outbound" in l))
+    ]
+    return jsonify({"logs": filtered})
 
 
 @app.route("/clear-task", methods=["POST"])

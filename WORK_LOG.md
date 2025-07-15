@@ -202,3 +202,4 @@
 - Wrapped log lines to avoid horizontal scrolling.
 - Logs dialog now polls every second and scrolls to the bottom when open.
 - Updated backlog with new log viewer scenarios.
+- Filtered /logs request and response entries from the log viewer results.

@@ -346,3 +346,4 @@ labels remain accessible.
 - Log lines wrap without horizontal scrolling. (TODO)
 - Logs update every second while the dialog is open. (TODO)
 - Logs auto-scroll to the bottom when already scrolled to the bottom. (TODO)
+- /logs endpoint omits its own request and response logs. (TODO)
