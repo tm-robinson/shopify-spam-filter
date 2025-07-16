@@ -159,7 +159,7 @@ function ManageSenders({ onClose }) {
           </thead>
           <tbody>
             {filtered.map((s) => (
-              <tr key={s.sender}>
+              <tr key={s.sender} className={`status-${s.status}`}>
                 <td className="email-cell">{s.sender}</td>
                 <td>{s.status}</td>
                 <td className="actions">
