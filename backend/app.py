@@ -798,6 +798,10 @@ def scan_status(task_id):
         for email in task.get("emails", []):
             unique[email["id"]] = email
         task["emails"] = list(unique.values())
+        # CODEX: drop any emails that have been confirmed already
+        unconfirmed_ids = {e["id"] for e in existing}
+        task["emails"] = [e for e in task["emails"] if e["id"] in unconfirmed_ids]
+        tasks[task_id]["emails"] = task["emails"]
 
         # CODEX: Sort emails by date so reused entries are merged in order
         def _email_dt(email):

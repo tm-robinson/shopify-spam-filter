@@ -205,3 +205,4 @@
 - Filtered /logs request and response entries from the log viewer results.
 - Fixed filtering to exclude the /logs response payload lines.
 - Adjusted filtering for log payload lines without the slash.
+- Removed confirmed emails from /scan-status results.
