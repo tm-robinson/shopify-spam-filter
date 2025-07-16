@@ -206,3 +206,9 @@
 - Fixed filtering to exclude the /logs response payload lines.
 - Adjusted filtering for log payload lines without the slash.
 - Removed confirmed emails from /scan-status results.
+
+## 16th July 2025
+
+- /logs requests no longer fill the log buffer.
+- Updated backlog to mark the log filtering scenario as done.
+- Skipped request and response logging for the /logs endpoint.

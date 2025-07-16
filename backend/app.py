@@ -75,14 +75,15 @@ def assign_user():
 @app.before_request
 def log_request_info():
     """Log basic info about incoming requests"""
-    logger.info("Inbound %s %s", request.method, request.path)
-    if request.method in {"POST", "PUT", "PATCH"}:
-        data = request.get_json(silent=True)
-        if data is not None:
-            payload = str(data)
-            if len(payload) > 500:
-                payload = payload[:497] + "..."
-            logger.debug("Request payload: %s", payload)
+    if request.path != "/logs":  # CODEX: skip logging for log polling
+        logger.info("Inbound %s %s", request.method, request.path)
+        if request.method in {"POST", "PUT", "PATCH"}:
+            data = request.get_json(silent=True)
+            if data is not None:
+                payload = str(data)
+                if len(payload) > 500:
+                    payload = payload[:497] + "..."
+                logger.debug("Request payload: %s", payload)
 
 
 @app.after_request
@@ -98,18 +99,19 @@ def set_user_cookie(resp):
 @app.after_request
 def log_response_info(resp):
     """Log info about outgoing responses"""
-    logger.info(
-        "Outbound %s %s -> %s",
-        request.method,
-        request.path,
-        resp.status,
-    )
-    if resp.is_json:
-        payload = resp.get_json()
-        snippet = str(payload)
-        if len(snippet) > 500:
-            snippet = snippet[:497] + "..."
-        logger.debug("Response payload: %s", snippet)
+    if request.path != "/logs":  # CODEX: skip logging for log polling
+        logger.info(
+            "Outbound %s %s -> %s",
+            request.method,
+            request.path,
+            resp.status,
+        )
+        if resp.is_json:
+            payload = resp.get_json()
+            snippet = str(payload)
+            if len(snippet) > 500:
+                snippet = snippet[:497] + "..."
+            logger.debug("Response payload: %s", snippet)
     return resp
 
 
