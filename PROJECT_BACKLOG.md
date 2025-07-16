@@ -341,6 +341,7 @@ labels remain accessible.
 - Manage page lists senders for each status. (TODO)
 - Filter buttons show only whitelist, spam or ignore senders. (TODO)
 - Clicking the trashcan removes the sender and unconfirms related emails. (TODO)
+- Sender rows use the same colour-coded backgrounds as the email list. (TODO)
 
 #### User Story: View task logs and clear tasks (DONE)
 
