@@ -234,6 +234,14 @@ labels remain accessible.
 - Task stage switches to "confirming" when the confirm button is pressed. (DONE)
 - Progress increases as each email is confirmed. (DONE)
 
+#### User Story: Hide confirmed emails during confirmation (DONE)
+
+**Description:** As a user, I want emails to disappear from the list as they are confirmed so that I can't change their status once processing has finished.
+
+**Test Scenarios:**
+
+- Polling `/scan-status/<id>` excludes emails that have already been confirmed. (DONE)
+
 #### User Story: Reset the database (TODO)
 
 **Description:** As a developer, I want a simple script to clear the SQLite database so I can start fresh during testing.
