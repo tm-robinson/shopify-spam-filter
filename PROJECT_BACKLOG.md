@@ -364,5 +364,5 @@ labels remain accessible.
 **Test Scenarios:**
 
 - A Dockerfile builds the frontend and installs Python dependencies. (DONE)
-- Running the container exposes ports 5000 and 5173. (TODO)
+- Running the container exposes port 5173 to the network. (TODO)
 - Local data files can be mounted so the database and credentials persist. (TODO)

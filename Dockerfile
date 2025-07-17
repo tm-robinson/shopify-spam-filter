@@ -24,7 +24,6 @@ RUN cd frontend && npm install && npm run build
 COPY docker/start.sh ./start.sh
 RUN chmod +x start.sh
 
-EXPOSE 5000
 EXPOSE 5173
 
 # Start both backend and frontend

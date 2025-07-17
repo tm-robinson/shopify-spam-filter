@@ -54,11 +54,11 @@ Run `./reset_db.sh` to delete `backend/data.db` and recreate an empty database u
    ```
 2. Run the container, mounting your configuration and database files:
    ```bash
-   docker run -p 5000:5000 -p 5173:5173 \
+   docker run -p 5173:5173 \
      --env-file .env \
      -v $(pwd)/backend/data.db:/app/backend/data.db \
      -v $(pwd)/backend/openrouter.key:/app/backend/openrouter.key \
      -v $(pwd)/backend/credentials.json:/app/backend/credentials.json \
      shopify-spam-filter
    ```
-   Adjust the volume paths to point at your local files. The UI will be available at `http://localhost:5173/`.
+   Adjust the volume paths to point at your local files. The UI will be available from other devices on your network at `http://<docker-host>:5173/`.
