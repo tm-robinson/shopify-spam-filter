@@ -1143,4 +1143,5 @@ def clear_task():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, ssl_context="adhoc")
+    # CODEX: Listen on all interfaces so Docker containers expose the backend
+    app.run(host="0.0.0.0", debug=True, ssl_context="adhoc")

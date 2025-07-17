@@ -217,3 +217,11 @@
 - Skipped request and response logging for the /logs endpoint.
 
 - Colour-coded sender rows in ManageSenders list.
+- Added Dockerfile and start script to run backend and frontend in a container.
+
+## 17th July 2025
+
+- Removed EXPOSE for port 5000 in Dockerfile so only the UI port is published.
+- Updated docker start script to bind Vite preview server on 0.0.0.0.
+- Documented new Docker run command and network access in README.
+- Adjusted backlog scenario for Docker port exposure.

@@ -356,3 +356,13 @@ labels remain accessible.
 - Logs update every second while the dialog is open. (TODO)
 - Logs auto-scroll to the bottom when already scrolled to the bottom. (TODO)
 - /logs endpoint omits its own request and response logs. (DONE)
+
+#### User Story: Run application in Docker (DONE)
+
+**Description:** As a developer, I want to run the backend and frontend from a single Docker image so it is easy to deploy.
+
+**Test Scenarios:**
+
+- A Dockerfile builds the frontend and installs Python dependencies. (DONE)
+- Running the container exposes port 5173 to the network. (TODO)
+- Local data files can be mounted so the database and credentials persist. (TODO)
