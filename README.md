@@ -45,3 +45,20 @@ Spam results are stored using the `shopify-spam` label in Gmail. Confirming choi
 ## Resetting the Database
 
 Run `./reset_db.sh` to delete `backend/data.db` and recreate an empty database using `schema.sql`. This is helpful when testing changes from a clean state.
+
+## Running with Docker
+
+1. Build the image:
+   ```bash
+   docker build -t shopify-spam-filter .
+   ```
+2. Run the container, mounting your configuration and database files:
+   ```bash
+   docker run -p 5000:5000 -p 5173:5173 \
+     --env-file .env \
+     -v $(pwd)/backend/data.db:/app/backend/data.db \
+     -v $(pwd)/backend/openrouter.key:/app/backend/openrouter.key \
+     -v $(pwd)/backend/credentials.json:/app/backend/credentials.json \
+     shopify-spam-filter
+   ```
+   Adjust the volume paths to point at your local files. The UI will be available at `http://localhost:5173/`.

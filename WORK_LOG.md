@@ -217,3 +217,4 @@
 - Skipped request and response logging for the /logs endpoint.
 
 - Colour-coded sender rows in ManageSenders list.
+- Added Dockerfile and start script to run backend and frontend in a container.
